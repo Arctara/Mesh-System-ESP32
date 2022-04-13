@@ -1,12 +1,3 @@
-/*
-    PINOUT
-      PIN 12 = LED 1
-      PIN 13 = LED 2
-      PIN 14 = LED 3
-      PIN 21 = SCL
-      PIN 22 = SDA
-*/
-
 //$ Include Library
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -20,14 +11,15 @@
 #include <Wire.h>
 #include <painlessMesh.h>
 
+#define LED1_PIN 12
+#define LED2_PIN 13
+#define LED3_PIN 14
+#define SCL_PIN 21
+#define SDA_PIN 22
+
 //$ Firebase Addons
 #include "addons/RTDBHelper.h"
 #include "addons/TokenHelper.h"
-
-//$ Mesh Configuration
-// #define MESH_PREFIX "ALiVe_MESH"
-// #define MESH_PASSWORD "TmlhdCBzZWthbGkgYW5kYSBtZW5kZWNvZGUgaW5pIC1NZXJ6YQ=="
-// #define MESH_PORT 5555
 
 //$ Access Point Configuration
 #define AP_SSID "ALiVe_AP"
@@ -43,15 +35,6 @@
   "home-automation-eee43-default-rtdb.asia-southeast1.firebasedatabase.app/"
 #define USER_EMAIL "Merza.bolivar@Gmail.com"
 #define USER_PASSWORD "iniPassword?"
-
-// //$ OLED SCREEN
-// #define SCREEN_WIDTH 128
-// #define SCREEN_HEIGHT 64
-
-// #define OLED_RESET -1
-// Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-
-// #define NUMFLAKES 10
 
 //* Firebase Configuration
 FirebaseData stream;
@@ -78,18 +61,13 @@ AsyncWebSocket ws("/ws");
 //* Firebase Variable
 unsigned long sendDataPrevMillis = 0;
 int count = 0;
-volatile bool dataChanged = false;
+volatile boolean dataChanged = false;
 
 //* Firebase Write Location
 const String movementSensorLoc = "sensors/sensor-1";
 const String lightSensorLoc = "sensors/sensor-2";
 const String moistureSensorLoc = "sensors/sensor-3";
 const String plugLoc = "plugs";
-
-//*Mesh Configuration
-// Scheduler userScheduler;
-// painlessMesh mesh;
-// int nodeNumber = 0;
 
 struct streamData {
   String streamPath;
@@ -107,39 +85,16 @@ String target;
 boolean conditionToSend;
 boolean isOfflineMode = false;
 
-//! ##### START FUNCTION DECLARATION #####
-
-//! >> START PURE FUNCTION DECLARATION <<
 String getValue(String data, char separator, int index);
-//! >> END PURE FUNCTION DECLARATION <<
-
-//! >> START FIREBASE FUNCTION DECLARATION <<
 void streamCallback(FirebaseStream data);
 void streamTimeoutCallback(bool timeout);
-//! >> END FIREBASE FUNCTION DECLARATION
-
-//! >> START WEBSOCKET FUNCTION DECLARATION <<
 void sendMessage();
 void settingWiFiCred(String ssid, String pass);
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len);
 void initWebSocket();
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
              AwsEventType type, void *arg, uint8_t *data, size_t len);
-//! >> END WEBSOCKET FUNCTION DECLARATION <<
 
-//! >> START MESH FUNCTION DECLARATION <<
-// void sendMessage();
-
-// //$ Needed for painless mesh library
-// void receivedCallback(uint32_t from, String &msg);
-// void newConnectionCallback(uint32_t nodeId);
-// void changedConnectionCallback();
-// void nodeTimeAdjustedCallback(int32_t offset);
-//! >> END MESH FUNCTION DECLARATION <<
-
-//! ##### END FUNCTION DECLARATION #####
-
-//! >>>>> START VOID SETUP <<<<<
 void setup() {
   Serial.begin(115200);
 
@@ -149,19 +104,6 @@ void setup() {
   }
 
   File file = SPIFFS.open("/wifi_cred.json");
-  // File file = SPIFFS.open("/wifi_cred.json", FILE_WRITE);
-  // if (!file) {
-  //   Serial.println("− failed to open file for writing");
-  //   return;
-  // }
-
-  // String message =
-  //     "{\"ssid\": \"ZTE_2.4G_bcr2p4\", \"pass\": \"tokinyong_2Sm2HVMq\"}";
-  // if (file.print(message)) {
-  //   Serial.println("− file written");
-  // } else {
-  //   Serial.println("− frite failed");
-  // }
 
   if (!file) {
     Serial.println("SPIFFS: Error Open File 2");
@@ -179,18 +121,6 @@ void setup() {
 
   Serial.println(wifi_ssid);
   Serial.println(wifi_pass);
-
-  // mesh.setDebugMsgTypes(ERROR | STARTUP);
-
-  // mesh.init(MESH_PREFIX, MESH_PASSWORD, MESH_PORT, WIFI_AP_STA);
-  // mesh.onReceive(&receivedCallback);
-  // mesh.onNewConnection(&newConnectionCallback);
-  // mesh.onChangedConnections(&changedConnectionCallback);
-  // mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
-
-  // mesh.stationManual("ZTE_2.4G_bcr2p4", "tokinyong_2Sm2HVMq");
-  // mesh.setRoot(true);
-  // mesh.setContainsRoot(true);
 
   WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
   Serial.println();
@@ -243,9 +173,7 @@ void setup() {
                                     streamTimeoutCallback);
   }
 }
-//! >>>>> END VOID SETUP <<<<<
 
-//! >>>>> START VOID LOOP <<<<<
 void loop() {
   ws.cleanupClients();
   // mesh.update();
@@ -334,11 +262,7 @@ void loop() {
     }
   }
 }
-//! >>>>> END VOID LOOP <<<<<
 
-//! ##### START FUNCTION DEFINITION #####
-
-//! >> START PURE FUNCTION <<
 String getValue(String data, char separator, int index) {
   int found = 0;
   int strIndex[] = {0, -1};
@@ -354,9 +278,7 @@ String getValue(String data, char separator, int index) {
 
   return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
-//! >> END PURE FUNCTION <<
 
-//! >> START FIREBASE FUNCTION DEFINITION <<
 void streamCallback(FirebaseStream data) {
   receivedData.streamPath = data.streamPath();
   receivedData.dataPath = data.dataPath();
@@ -374,9 +296,7 @@ void streamTimeoutCallback(bool timeout) {
     Serial.printf("Error code: %d, Error reason: %s\n\n", stream.httpCode(),
                   stream.errorReason().c_str());
 }
-//! >> END FIREBASE FUNCTION DEFINITION <<
 
-//! >> START WEBSOCKET FUNCTION DEFINITION <<
 void sendMessage() {
   meshSendData["from"] = "center";
   meshSendData["to"] = target;
@@ -543,35 +463,3 @@ void initWebSocket() {
   ws.onEvent(onEvent);
   server.addHandler(&ws);
 }
-//! >> END WEBSOCKET FUNCTION DEFINITION <<
-
-//! >> START MESH FUNCTION DEFINITION <<
-// void sendMessage() {
-//   meshSendData["from"] = "center";
-//   meshSendData["to"] = target;
-//   meshSendData["condition"] = conditionToSend;
-//   String sendData;
-//   serializeJson(meshSendData, sendData);
-//   Serial.println(sendData);
-//   mesh.sendBroadcast(sendData);
-// }
-
-// //$ Needed for painless mesh library
-// void receivedCallback(uint32_t from, String &msg) {
-//   Serial.printf("startHere: Received from %u msg=%s\n", from, msg.c_str());
-//   deserializeJson(meshReceivedData, msg);
-// }
-
-// void newConnectionCallback(uint32_t nodeId) {
-//   Serial.printf("--> startHere: New Connection, nodeId = %u\n", nodeId);
-// }
-
-// void changedConnectionCallback() { Serial.printf("Changed connections\n"); }
-
-// void nodeTimeAdjustedCallback(int32_t offset) {
-//   Serial.printf("Adjusted time %u. Offset = %d\n", mesh.getNodeTime(),
-//   offset);
-// }
-//! >> END MESH FUNCTION DEFINITION <<
-
-//! ##### END FUNCTION DEFINITION #####
