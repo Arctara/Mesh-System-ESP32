@@ -104,7 +104,8 @@ streamData receivedData;
 DynamicJsonDocument meshSendData(256);
 DynamicJsonDocument meshReceivedData(256);
 String target;
-bool conditionToSend;
+boolean conditionToSend;
+boolean isOfflineMode = false;
 
 //! ##### START FUNCTION DECLARATION #####
 
@@ -143,7 +144,7 @@ void setup() {
   Serial.begin(115200);
 
   if (!SPIFFS.begin(true)) {
-    Serial.println("Error Mount SPIFFS");
+    Serial.println("SPIFFS: Error Mount SPIFFS");
     return;
   }
 
@@ -163,7 +164,7 @@ void setup() {
   // }
 
   if (!file) {
-    Serial.println("Error Open File 2");
+    Serial.println("SPIFFS: Error Open File 2");
     return;
   }
 
@@ -193,45 +194,54 @@ void setup() {
 
   WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
   Serial.println();
-  Serial.print("Menghubungkan ke WiFi");
+  Serial.print("WiFi Station: Menghubungkan ke WiFi");
   while (WiFi.status() != WL_CONNECTED && millis() <= 15000) {
     Serial.print(".");
     delay(300);
   }
-  if (WiFi.status() != WL_CONNECTED) {
-    WiFi.mode(WIFI_AP);
-  }
-  Serial.println();
 
-  Serial.print("Terhubung ke WiFi dengan IP Address: ");
-  Serial.println(WiFi.localIP());
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println(
+        "GLOBAL: Tidak dapat terhubung dengan konfigurasi WiFi yang "
+        "diberikan.");
+    Serial.println("GLOBAL: Beralih ke mode Offline.");
+    isOfflineMode = true;
+    WiFi.mode(WIFI_AP);
+  } else if (WiFi.status() == WL_CONNECTED) {
+    Serial.print("WiFi Station: Terhubung ke WiFi dengan IP Address: ");
+    Serial.println(WiFi.localIP());
+  }
+
+  Serial.println();
 
   WiFi.softAPConfig(IP_ADDRESS, GATEWAY, NETMASK);
   WiFi.softAP(AP_SSID, AP_PASS, AP_CHANNEL, AP_DISCOVERABLE, AP_MAX_CONNECTION);
 
-  Serial.print("IP Address Access Point: ");
+  Serial.print("WiFi AP: IP Address Access Point: ");
   Serial.println(WiFi.softAPIP());
 
   initWebSocket();
   server.begin();
 
-  config.api_key = API_KEY;
+  if (!isOfflineMode) {
+    config.api_key = API_KEY;
 
-  auth.user.email = USER_EMAIL;
-  auth.user.password = USER_PASSWORD;
+    auth.user.email = USER_EMAIL;
+    auth.user.password = USER_PASSWORD;
 
-  config.database_url = DATABASE_URL;
+    config.database_url = DATABASE_URL;
 
-  config.token_status_callback = tokenStatusCallback;
+    config.token_status_callback = tokenStatusCallback;
 
-  Firebase.begin(&config, &auth);
-  Firebase.reconnectWiFi(true);
+    Firebase.begin(&config, &auth);
+    Firebase.reconnectWiFi(true);
 
-  if (!Firebase.RTDB.beginStream(&stream, "/"))
-    Serial.printf("Stream begin error, %s\n\n", stream.errorReason().c_str());
+    if (!Firebase.RTDB.beginStream(&stream, "/"))
+      Serial.printf("Stream begin error, %s\n\n", stream.errorReason().c_str());
 
-  Firebase.RTDB.setStreamCallback(&stream, streamCallback,
-                                  streamTimeoutCallback);
+    Firebase.RTDB.setStreamCallback(&stream, streamCallback,
+                                    streamTimeoutCallback);
+  }
 }
 //! >>>>> END VOID SETUP <<<<<
 
@@ -421,8 +431,13 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
 
         Serial.println("    ==> " + child + " . " + condition);
 
-        Firebase.RTDB.setBool(&fbdo, plugLoc + "/" + child + "/condition",
-                              condition);
+        if (!isOfflineMode) {
+          Firebase.RTDB.setBool(&fbdo, plugLoc + "/" + child + "/condition",
+                                condition);
+        } else {
+          Serial.println("GLOBAL: Can't send data to Firebase.");
+          Serial.println("GLOBAL: Reason => Offline Mode.");
+        }
       }
 
       if (from == "light-sensor") {
@@ -441,8 +456,13 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
 
         Serial.println("    ==> " + data);
 
-        Firebase.RTDB.setString(&fbdo, lightSensorLoc + "/reading", data);
-        Firebase.RTDB.setString(&fbdo, lightSensorLoc + "/icon", icon);
+        if (!isOfflineMode) {
+          Firebase.RTDB.setString(&fbdo, lightSensorLoc + "/reading", data);
+          Firebase.RTDB.setString(&fbdo, lightSensorLoc + "/icon", icon);
+        } else {
+          Serial.println("GLOBAL: Can't send data to Firebase.");
+          Serial.println("GLOBAL: Reason => Offline Mode.");
+        }
       }
 
       if (from == "movement-sensor") {
@@ -453,8 +473,13 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
 
         Serial.println("    ==> " + data);
 
-        Firebase.RTDB.setString(&fbdo, movementSensorLoc + "/reading", data);
-        Firebase.RTDB.setString(&fbdo, movementSensorLoc + "/icon", icon);
+        if (!isOfflineMode) {
+          Firebase.RTDB.setString(&fbdo, movementSensorLoc + "/reading", data);
+          Firebase.RTDB.setString(&fbdo, movementSensorLoc + "/icon", icon);
+        } else {
+          Serial.println("GLOBAL: Can't send data to Firebase.");
+          Serial.println("GLOBAL: Reason => Offline Mode.");
+        }
       }
 
       if (from == "moisture-sensor") {
@@ -473,8 +498,13 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
 
         Serial.println("    ==> " + data);
 
-        Firebase.RTDB.setString(&fbdo, moistureSensorLoc + "/reading", data);
-        Firebase.RTDB.setString(&fbdo, moistureSensorLoc + "/icon", icon);
+        if (!isOfflineMode) {
+          Firebase.RTDB.setString(&fbdo, moistureSensorLoc + "/reading", data);
+          Firebase.RTDB.setString(&fbdo, moistureSensorLoc + "/icon", icon);
+        } else {
+          Serial.println("GLOBAL: Can't send data to Firebase.");
+          Serial.println("GLOBAL: Reason => Offline Mode.");
+        }
       }
 
       if (from == "mobile") {
