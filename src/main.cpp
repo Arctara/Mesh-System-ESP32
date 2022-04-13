@@ -63,7 +63,7 @@ AsyncWebSocket ws("/ws");
 //* Firebase Variable
 unsigned long sendDataPrevMillis = 0;
 int count = 0;
-volatile boolean dataChanged = false;
+volatile boolean firebaseDataChanged = false;
 
 //* Firebase Write Location
 const String movementSensorLoc = "sensors/sensor-1";
@@ -87,7 +87,7 @@ streamData receivedDataFirebase;
 DynamicJsonDocument dataToSendWebsocket(256);
 DynamicJsonDocument receivedDataWebsocket(256);
 String target;
-boolean conditionToSend;
+boolean conditionToSendWebsocket;
 boolean isOfflineMode = false;
 
 //* Global Function Declaration
@@ -186,8 +186,8 @@ void setup() {
 void loop() {
   ws.cleanupClients();
 
-  if (dataChanged) {
-    dataChanged = false;
+  if (firebaseDataChanged) {
+    firebaseDataChanged = false;
     String deviceType = getValue(receivedDataFirebase.dataPath, '/', 1);
     String deviceName = getValue(receivedDataFirebase.dataPath, '/', 2);
     String deviceCondition = receivedDataFirebase.data;
@@ -196,12 +196,12 @@ void loop() {
       if (deviceName == "lamp-1") {
         if (deviceCondition == "true") {
           target = "lamp-1";
-          conditionToSend = true;
+          conditionToSendWebsocket = true;
           sendMessage();
           Serial.println("GLOBAL: Lampu 1 menyala!");
         } else {
           target = "lamp-1";
-          conditionToSend = false;
+          conditionToSendWebsocket = false;
           sendMessage();
           Serial.println("GLOBAL: Lampu 1 mati!");
         }
@@ -210,60 +210,60 @@ void loop() {
       if (deviceName == "plug-1") {
         if (deviceCondition == "true") {
           target = "plug-1";
-          conditionToSend = true;
+          conditionToSendWebsocket = true;
           sendMessage();
           Serial.println("GLOBAL: Stopkontak 1 menyala!");
         } else {
           target = "plug-1";
-          conditionToSend = false;
+          conditionToSendWebsocket = false;
           sendMessage();
           Serial.println("GLOBAL: Stopkontak 1 mati!");
         }
       } else if (deviceName == "plug-2") {
         if (deviceCondition == "true") {
           target = "plug-2";
-          conditionToSend = true;
+          conditionToSendWebsocket = true;
           sendMessage();
           Serial.println("GLOBAL: Stopkontak 2 menyala!");
         } else {
           target = "plug-2";
-          conditionToSend = false;
+          conditionToSendWebsocket = false;
           sendMessage();
           Serial.println("GLOBAL: Stopkontak 2 mati!");
         }
       } else if (deviceName == "plug-3") {
         if (deviceCondition == "true") {
           target = "plug-3";
-          conditionToSend = true;
+          conditionToSendWebsocket = true;
           sendMessage();
           Serial.println("GLOBAL: Stopkontak 3 menyala!");
         } else {
           target = "plug-3";
-          conditionToSend = false;
+          conditionToSendWebsocket = false;
           sendMessage();
           Serial.println("GLOBAL: Stopkontak 3 mati!");
         }
       } else if (deviceName == "plug-4") {
         if (deviceCondition == "true") {
           target = "plug-4";
-          conditionToSend = true;
+          conditionToSendWebsocket = true;
           sendMessage();
           Serial.println("GLOBAL: Stopkontak 4 menyala!");
         } else {
           target = "plug-4";
-          conditionToSend = false;
+          conditionToSendWebsocket = false;
           sendMessage();
           Serial.println("GLOBAL: Stopkontak 4 mati!");
         }
       } else if (deviceName == "plug-5") {
         if (deviceCondition == "true") {
           target = "plug-5";
-          conditionToSend = true;
+          conditionToSendWebsocket = true;
           sendMessage();
           Serial.println("GLOBAL: Stopkontak 5 menyala!");
         } else {
           target = "plug-5";
-          conditionToSend = false;
+          conditionToSendWebsocket = false;
           sendMessage();
           Serial.println("GLOBAL: Stopkontak 5 mati!");
         }
@@ -296,7 +296,7 @@ void streamCallback(FirebaseStream data) {
   receivedDataFirebase.eventType = data.eventType();
   receivedDataFirebase.data = data.stringData();
 
-  dataChanged = true;
+  firebaseDataChanged = true;
 }
 
 void streamTimeoutCallback(bool timeout) {
@@ -310,7 +310,7 @@ void streamTimeoutCallback(bool timeout) {
 void sendMessage() {
   dataToSendWebsocket["from"] = "center";
   dataToSendWebsocket["to"] = target;
-  dataToSendWebsocket["condition"] = String(conditionToSend);
+  dataToSendWebsocket["condition"] = String(conditionToSendWebsocket);
 
   String sendData;
   serializeJson(dataToSendWebsocket, sendData);
