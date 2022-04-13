@@ -11,7 +11,6 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Arduino.h>
-#include <ArduinoJson.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <Firebase_ESP_Client.h>
@@ -88,9 +87,9 @@ const String moistureSensorLoc = "sensors/sensor-3";
 const String plugLoc = "plugs";
 
 //*Mesh Configuration
-Scheduler userScheduler;
-painlessMesh mesh;
-int nodeNumber = 0;
+// Scheduler userScheduler;
+// painlessMesh mesh;
+// int nodeNumber = 0;
 
 struct streamData {
   String streamPath;
@@ -120,7 +119,7 @@ void streamTimeoutCallback(bool timeout);
 
 //! >> START WEBSOCKET FUNCTION DECLARATION <<
 void sendMessage();
-void spiffsWriteData(char *data);
+void settingWiFiCred(String ssid, String pass);
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len);
 void initWebSocket();
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
@@ -149,6 +148,19 @@ void setup() {
   }
 
   File file = SPIFFS.open("/wifi_cred.json");
+  // File file = SPIFFS.open("/wifi_cred.json", FILE_WRITE);
+  // if (!file) {
+  //   Serial.println("− failed to open file for writing");
+  //   return;
+  // }
+
+  // String message =
+  //     "{\"ssid\": \"ZTE_2.4G_bcr2p4\", \"pass\": \"tokinyong_2Sm2HVMq\"}";
+  // if (file.print(message)) {
+  //   Serial.println("− file written");
+  // } else {
+  //   Serial.println("− frite failed");
+  // }
 
   if (!file) {
     Serial.println("Error Open File 2");
@@ -182,7 +194,7 @@ void setup() {
   WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
   Serial.println();
   Serial.print("Menghubungkan ke WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED && millis() <= 15000) {
     Serial.print(".");
     delay(300);
   }
@@ -367,7 +379,7 @@ void sendMessage() {
   ws.textAll(sendData);
 }
 
-void spiffsWriteData(char *data) {
+void settingWiFiCred(String ssid, String pass) {
   File write = SPIFFS.open("/wifi_cred.json", FILE_WRITE);
 
   if (!write) {
@@ -375,7 +387,10 @@ void spiffsWriteData(char *data) {
     return;
   }
 
-  if (write.print(data)) {
+  String dataToWrite =
+      "{\"ssid\": \"" + ssid + "\", \"pass\": \"" + pass + "\"}";
+
+  if (write.print(dataToWrite)) {
     Serial.println("Write Success");
   } else {
     Serial.println("Write Failed");
@@ -399,7 +414,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     if (to == "center") {
       Serial.println("! Data for this device!");
       if (from == "plugFamily") {
-        Serial.println("  > Data from Plug Family!");
+        Serial.println("  > Data from Plug Family! (PlFm)");
 
         String child = meshReceivedData["child"].as<String>();
         bool condition = meshReceivedData["condition"].as<bool>();
@@ -411,7 +426,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       }
 
       if (from == "light-sensor") {
-        Serial.println("  > Data from Light Sensor!");
+        Serial.println("  > Data from Light Sensor! (LiSn)");
 
         String data = meshReceivedData["data"].as<String>();
         String icon = "";
@@ -431,7 +446,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       }
 
       if (from == "movement-sensor") {
-        Serial.println("  > Data from Movement Sensor!");
+        Serial.println("  > Data from Movement Sensor! (MvmSn)");
 
         String data = meshReceivedData["data"].as<String>();
         String icon = "human";
@@ -443,7 +458,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       }
 
       if (from == "moisture-sensor") {
-        Serial.println("  > Data from Moisture Sensor!");
+        Serial.println("  > Data from Moisture Sensor! (MstSn)");
 
         String data = meshReceivedData["data"].as<String>();
         String icon = "";
@@ -461,8 +476,18 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
         Firebase.RTDB.setString(&fbdo, moistureSensorLoc + "/reading", data);
         Firebase.RTDB.setString(&fbdo, moistureSensorLoc + "/icon", icon);
       }
+
+      if (from == "mobile") {
+        Serial.println("  > Data from Mobile Application! (MobApp)");
+        String event = meshReceivedData["event"].as<String>();
+        if (event == "wifi-set") {
+          String ssid = meshReceivedData["ssid"].as<String>();
+          String pass = meshReceivedData["pass"].as<String>();
+
+          settingWiFiCred(ssid, pass);
+        }
+      }
     }
-    // spiffsWriteData((char *)data);
   }
 }
 
