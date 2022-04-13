@@ -11,15 +11,16 @@
 #include <Wire.h>
 #include <painlessMesh.h>
 
+//$ Firebase Addons
+#include "addons/RTDBHelper.h"
+#include "addons/TokenHelper.h"
+
+//$ ESP32 Pinout
 #define LED1_PIN 12
 #define LED2_PIN 13
 #define LED3_PIN 14
 #define SCL_PIN 21
 #define SDA_PIN 22
-
-//$ Firebase Addons
-#include "addons/RTDBHelper.h"
-#include "addons/TokenHelper.h"
 
 //$ Access Point Configuration
 #define AP_SSID "ALiVe_AP"
@@ -36,10 +37,11 @@
 #define USER_EMAIL "Merza.bolivar@Gmail.com"
 #define USER_PASSWORD "iniPassword?"
 
-//* Firebase Configuration
+//* Firebase Data Configuration
 FirebaseData stream;
 FirebaseData fbdo;
 
+//* Firebase User Configuration
 FirebaseAuth auth;
 FirebaseConfig config;
 
@@ -69,6 +71,7 @@ const String lightSensorLoc = "sensors/sensor-2";
 const String moistureSensorLoc = "sensors/sensor-3";
 const String plugLoc = "plugs";
 
+//* Struct Used for Firebase Data
 struct streamData {
   String streamPath;
   String dataPath;
@@ -77,14 +80,17 @@ struct streamData {
   String data;
 };
 
-streamData receivedData;
+//* Initialize Struct Data
+streamData receivedDataFirebase;
 
-DynamicJsonDocument meshSendData(256);
-DynamicJsonDocument meshReceivedData(256);
+//* Global Variable Declaration
+DynamicJsonDocument dataToSendWebsocket(256);
+DynamicJsonDocument receivedDataWebsocket(256);
 String target;
 boolean conditionToSend;
 boolean isOfflineMode = false;
 
+//* Global Function Declaration
 String getValue(String data, char separator, int index);
 void streamCallback(FirebaseStream data);
 void streamTimeoutCallback(bool timeout);
@@ -95,6 +101,7 @@ void initWebSocket();
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
              AwsEventType type, void *arg, uint8_t *data, size_t len);
 
+//* VOID SETUP
 void setup() {
   Serial.begin(115200);
 
@@ -167,21 +174,23 @@ void setup() {
     Firebase.reconnectWiFi(true);
 
     if (!Firebase.RTDB.beginStream(&stream, "/"))
-      Serial.printf("Stream begin error, %s\n\n", stream.errorReason().c_str());
+      Serial.printf("Firebase: Stream begin error, %s\n\n",
+                    stream.errorReason().c_str());
 
     Firebase.RTDB.setStreamCallback(&stream, streamCallback,
                                     streamTimeoutCallback);
   }
 }
 
+//* VOID LOOP
 void loop() {
   ws.cleanupClients();
-  // mesh.update();
+
   if (dataChanged) {
     dataChanged = false;
-    String deviceType = getValue(receivedData.dataPath, '/', 1);
-    String deviceName = getValue(receivedData.dataPath, '/', 2);
-    String deviceCondition = receivedData.data;
+    String deviceType = getValue(receivedDataFirebase.dataPath, '/', 1);
+    String deviceName = getValue(receivedDataFirebase.dataPath, '/', 2);
+    String deviceCondition = receivedDataFirebase.data;
 
     if (deviceType == "lamps") {
       if (deviceName == "lamp-1") {
@@ -189,12 +198,12 @@ void loop() {
           target = "lamp-1";
           conditionToSend = true;
           sendMessage();
-          Serial.println("Lampu 1 menyala!");
+          Serial.println("GLOBAL: Lampu 1 menyala!");
         } else {
           target = "lamp-1";
           conditionToSend = false;
           sendMessage();
-          Serial.println("Lampu 1 mati!");
+          Serial.println("GLOBAL: Lampu 1 mati!");
         }
       }
     } else if (deviceType == "plugs") {
@@ -203,66 +212,67 @@ void loop() {
           target = "plug-1";
           conditionToSend = true;
           sendMessage();
-          Serial.println("Stopkontak 1 menyala!");
+          Serial.println("GLOBAL: Stopkontak 1 menyala!");
         } else {
           target = "plug-1";
           conditionToSend = false;
           sendMessage();
-          Serial.println("Stopkontak 1 mati!");
+          Serial.println("GLOBAL: Stopkontak 1 mati!");
         }
       } else if (deviceName == "plug-2") {
         if (deviceCondition == "true") {
           target = "plug-2";
           conditionToSend = true;
           sendMessage();
-          Serial.println("Stopkontak 2 menyala!");
+          Serial.println("GLOBAL: Stopkontak 2 menyala!");
         } else {
           target = "plug-2";
           conditionToSend = false;
           sendMessage();
-          Serial.println("Stopkontak 2 mati!");
+          Serial.println("GLOBAL: Stopkontak 2 mati!");
         }
       } else if (deviceName == "plug-3") {
         if (deviceCondition == "true") {
           target = "plug-3";
           conditionToSend = true;
           sendMessage();
-          Serial.println("Stopkontak 3 menyala!");
+          Serial.println("GLOBAL: Stopkontak 3 menyala!");
         } else {
           target = "plug-3";
           conditionToSend = false;
           sendMessage();
-          Serial.println("Stopkontak 3 mati!");
+          Serial.println("GLOBAL: Stopkontak 3 mati!");
         }
       } else if (deviceName == "plug-4") {
         if (deviceCondition == "true") {
           target = "plug-4";
           conditionToSend = true;
           sendMessage();
-          Serial.println("Stopkontak 4 menyala!");
+          Serial.println("GLOBAL: Stopkontak 4 menyala!");
         } else {
           target = "plug-4";
           conditionToSend = false;
           sendMessage();
-          Serial.println("Stopkontak 4 mati!");
+          Serial.println("GLOBAL: Stopkontak 4 mati!");
         }
       } else if (deviceName == "plug-5") {
         if (deviceCondition == "true") {
           target = "plug-5";
           conditionToSend = true;
           sendMessage();
-          Serial.println("Stopkontak 5 menyala!");
+          Serial.println("GLOBAL: Stopkontak 5 menyala!");
         } else {
           target = "plug-5";
           conditionToSend = false;
           sendMessage();
-          Serial.println("Stopkontak 5 mati!");
+          Serial.println("GLOBAL: Stopkontak 5 mati!");
         }
       }
     }
   }
 }
 
+//* Global Function Definition
 String getValue(String data, char separator, int index) {
   int found = 0;
   int strIndex[] = {0, -1};
@@ -280,30 +290,30 @@ String getValue(String data, char separator, int index) {
 }
 
 void streamCallback(FirebaseStream data) {
-  receivedData.streamPath = data.streamPath();
-  receivedData.dataPath = data.dataPath();
-  receivedData.dataType = data.dataType();
-  receivedData.eventType = data.eventType();
-  receivedData.data = data.stringData();
+  receivedDataFirebase.streamPath = data.streamPath();
+  receivedDataFirebase.dataPath = data.dataPath();
+  receivedDataFirebase.dataType = data.dataType();
+  receivedDataFirebase.eventType = data.eventType();
+  receivedDataFirebase.data = data.stringData();
 
   dataChanged = true;
 }
 
 void streamTimeoutCallback(bool timeout) {
-  if (timeout) Serial.println("Stream timed out, resuming...\n");
+  if (timeout) Serial.println("Firebase: Stream timed out, resuming...\n");
 
   if (!stream.httpConnected())
-    Serial.printf("Error code: %d, Error reason: %s\n\n", stream.httpCode(),
-                  stream.errorReason().c_str());
+    Serial.printf("Firebase: Error code => %d, Error reason => %s\n\n",
+                  stream.httpCode(), stream.errorReason().c_str());
 }
 
 void sendMessage() {
-  meshSendData["from"] = "center";
-  meshSendData["to"] = target;
-  meshSendData["condition"] = String(conditionToSend);
+  dataToSendWebsocket["from"] = "center";
+  dataToSendWebsocket["to"] = target;
+  dataToSendWebsocket["condition"] = String(conditionToSend);
 
   String sendData;
-  serializeJson(meshSendData, sendData);
+  serializeJson(dataToSendWebsocket, sendData);
   Serial.println(sendData);
 
   ws.textAll(sendData);
@@ -321,9 +331,9 @@ void settingWiFiCred(String ssid, String pass) {
       "{\"ssid\": \"" + ssid + "\", \"pass\": \"" + pass + "\"}";
 
   if (write.print(dataToWrite)) {
-    Serial.println("Write Success");
+    Serial.println("SPIFFS: Write Success");
   } else {
-    Serial.println("Write Failed");
+    Serial.println("SPIFFS: Write Failed");
   }
 
   write.close();
@@ -336,20 +346,20 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       info->opcode == WS_TEXT) {
     data[len] = 0;
 
-    deserializeJson(meshReceivedData, data);
+    deserializeJson(receivedDataWebsocket, data);
 
-    String from = meshReceivedData["from"].as<String>();
-    String to = meshReceivedData["to"].as<String>();
+    String from = receivedDataWebsocket["from"].as<String>();
+    String to = receivedDataWebsocket["to"].as<String>();
 
     if (to == "center") {
-      Serial.println("! Data for this device!");
+      Serial.println("! Data for Center!");
       if (from == "plugFamily") {
         Serial.println("  > Data from Plug Family! (PlFm)");
 
-        String child = meshReceivedData["child"].as<String>();
-        bool condition = meshReceivedData["condition"].as<bool>();
+        String child = receivedDataWebsocket["child"].as<String>();
+        bool condition = receivedDataWebsocket["condition"].as<bool>();
 
-        Serial.println("    ==> " + child + " . " + condition);
+        Serial.println("    ==> " + child + " = " + condition);
 
         if (!isOfflineMode) {
           Firebase.RTDB.setBool(&fbdo, plugLoc + "/" + child + "/condition",
@@ -363,7 +373,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       if (from == "light-sensor") {
         Serial.println("  > Data from Light Sensor! (LiSn)");
 
-        String data = meshReceivedData["data"].as<String>();
+        String data = receivedDataWebsocket["data"].as<String>();
         String icon = "";
 
         if (data == "Siang") {
@@ -388,7 +398,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       if (from == "movement-sensor") {
         Serial.println("  > Data from Movement Sensor! (MvmSn)");
 
-        String data = meshReceivedData["data"].as<String>();
+        String data = receivedDataWebsocket["data"].as<String>();
         String icon = "human";
 
         Serial.println("    ==> " + data);
@@ -405,7 +415,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       if (from == "moisture-sensor") {
         Serial.println("  > Data from Moisture Sensor! (MstSn)");
 
-        String data = meshReceivedData["data"].as<String>();
+        String data = receivedDataWebsocket["data"].as<String>();
         String icon = "";
 
         if (data == "Terlalu banyak air") {
@@ -429,10 +439,10 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
 
       if (from == "mobile") {
         Serial.println("  > Data from Mobile Application! (MobApp)");
-        String event = meshReceivedData["event"].as<String>();
+        String event = receivedDataWebsocket["event"].as<String>();
         if (event == "wifi-set") {
-          String ssid = meshReceivedData["ssid"].as<String>();
-          String pass = meshReceivedData["pass"].as<String>();
+          String ssid = receivedDataWebsocket["ssid"].as<String>();
+          String pass = receivedDataWebsocket["pass"].as<String>();
 
           settingWiFiCred(ssid, pass);
         }
@@ -445,11 +455,12 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
              AwsEventType type, void *arg, uint8_t *data, size_t len) {
   switch (type) {
     case WS_EVT_CONNECT:
-      Serial.printf("Websocket client #%u connected from %s\n", client->id(),
-                    client->remoteIP().toString().c_str());
+      Serial.printf("Websocket: Websocket client #%u connected from %s\n",
+                    client->id(), client->remoteIP().toString().c_str());
       break;
     case WS_EVT_DISCONNECT:
-      Serial.printf("Websocket client #%u disconnected\n", client->id());
+      Serial.printf("Websocket: Websocket client #%u disconnected\n",
+                    client->id());
       break;
     case WS_EVT_DATA:
       handleWebSocketMessage(arg, data, len);
