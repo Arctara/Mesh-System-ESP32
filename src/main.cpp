@@ -3,6 +3,7 @@
 #include <Adafruit_SSD1306.h>
 #include <Arduino.h>
 #include <AsyncTCP.h>
+#include <BluetoothSerial.h>
 #include <ESPAsyncWebServer.h>
 #include <Firebase_ESP_Client.h>
 #include <SPI.h>
@@ -83,11 +84,17 @@ struct streamData {
 //* Initialize Struct Data
 streamData receivedDataFirebase;
 
+//* Bluetooth Initialization
+BluetoothSerial SerialBT;
+
 //* Global Variable Declaration
 DynamicJsonDocument dataToSendWebsocket(256);
 DynamicJsonDocument receivedDataWebsocket(256);
+DynamicJsonDocument receivedDataBluetooth(256);
 String target;
+String bluetoothMessage;
 boolean conditionToSendWebsocket;
+boolean bluetoothDataReceived;
 boolean isOfflineMode = false;
 
 //* Global Function Declaration
@@ -144,6 +151,8 @@ void setup() {
     Serial.println("GLOBAL: Beralih ke mode Offline.");
     isOfflineMode = true;
     WiFi.mode(WIFI_AP);
+    SerialBT.begin("ALiVe_Server");
+    Serial.println("Bluetooth: Bluetooth telah aktif!");
   } else if (WiFi.status() == WL_CONNECTED) {
     Serial.print("WiFi Station: Terhubung ke WiFi dengan IP Address: ");
     Serial.println(WiFi.localIP());
@@ -184,6 +193,34 @@ void setup() {
 
 //* VOID LOOP
 void loop() {
+  if (SerialBT.available() > 0) {
+    bluetoothMessage = SerialBT.readStringUntil('\n');
+    bluetoothMessage.remove(bluetoothMessage.length() - 1, 1);
+    bluetoothDataReceived = true;
+    delay(20);
+  }
+
+  if (bluetoothDataReceived) {
+    deserializeJson(receivedDataBluetooth, bluetoothMessage);
+
+    String from = receivedDataBluetooth["from"].as<String>();
+    String to = receivedDataBluetooth["to"].as<String>();
+
+    if (from == "mobile") {
+      Serial.println("  > Data from Mobile Application! (MobApp)");
+      String event = receivedDataWebsocket["event"].as<String>();
+
+      if (event == "wifi-set") {
+        String ssid = receivedDataBluetooth["ssid"].as<String>();
+        String pass = receivedDataBluetooth["pass"].as<String>();
+
+        settingWiFiCred(ssid, pass);
+      }
+    }
+
+    bluetoothDataReceived = false;
+  }
+
   ws.cleanupClients();
 
   if (firebaseDataChanged) {
