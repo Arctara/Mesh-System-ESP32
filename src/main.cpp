@@ -3,6 +3,9 @@
 #include <Adafruit_SSD1306.h>
 #include <Arduino.h>
 #include <AsyncTCP.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
 #include <ESPAsyncWebServer.h>
 #include <Firebase_ESP_Client.h>
 #include <SPI.h>
@@ -14,6 +17,10 @@
 //$ Firebase Addons
 #include "addons/RTDBHelper.h"
 #include "addons/TokenHelper.h"
+
+//$ Bluetooth UUID
+#define SERVICE_UUID "44e6b26b-0386-44d5-8848-197c988837e9"
+#define CHARACTERISTIC_UUID "bc08d402-14bb-4002-b0ca-b47b4eb78df7"
 
 //$ ESP32 Pinout
 #define LED1_PIN 12
@@ -138,16 +145,32 @@ void setup() {
     delay(300);
   }
 
-  if (WiFi.status() != WL_CONNECTED) {
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print("WiFi Station: Terhubung ke WiFi dengan IP Address: ");
+    Serial.println(WiFi.localIP());
+  } else if (WiFi.status() != WL_CONNECTED) {
     Serial.println(
         "GLOBAL: Tidak dapat terhubung dengan konfigurasi WiFi yang "
         "diberikan.");
     Serial.println("GLOBAL: Beralih ke mode Offline.");
     isOfflineMode = true;
     WiFi.mode(WIFI_AP);
-  } else if (WiFi.status() == WL_CONNECTED) {
-    Serial.print("WiFi Station: Terhubung ke WiFi dengan IP Address: ");
-    Serial.println(WiFi.localIP());
+
+    BLEDevice::init("ALiVe_Server");
+    BLEServer *pServer = BLEDevice::createServer();
+    BLEService *pService = pServer->createService(SERVICE_UUID);
+    BLECharacteristic *pCharacteristic = pService->createCharacteristic(
+        CHARACTERISTIC_UUID,
+        BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+    pCharacteristic->setValue("Hello World says Me!");
+    pService->start();
+    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+    pAdvertising->addServiceUUID(SERVICE_UUID);
+    pAdvertising->setScanResponse(true);
+    pAdvertising->setMinPreferred(0x06);
+    pAdvertising->setMinPreferred(0x12);
+    BLEDevice::startAdvertising();
+    Serial.println("Characteristic defined! Now it can be read from phone!");
   }
 
   Serial.println();
