@@ -1,15 +1,15 @@
 //$ Include Library
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
 #include <Arduino.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <Firebase_ESP_Client.h>
 #include <SPI.h>
 #include <SPIFFS.h>
+#include <SSD1306.h>
 #include <WiFi.h>
 #include <Wire.h>
 #include <painlessMesh.h>
+#include <qrcode.h>
 
 //$ Firebase Addons
 #include "addons/RTDBHelper.h"
@@ -36,6 +36,9 @@
   "home-automation-eee43-default-rtdb.asia-southeast1.firebasedatabase.app/"
 #define USER_EMAIL "Merza.bolivar@Gmail.com"
 #define USER_PASSWORD "iniPassword?"
+
+SSD1306 display(0x3C, 21, 22);
+QRcode qrcode(&display);
 
 //* Firebase Data Configuration
 FirebaseData stream;
@@ -105,6 +108,12 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
 void setup() {
   Serial.begin(115200);
 
+  display.init();
+  display.write("Hello!");
+  display.display();
+
+  qrcode.init();
+
   if (!SPIFFS.begin(true)) {
     Serial.println("SPIFFS: Error Mount SPIFFS");
     return;
@@ -143,7 +152,6 @@ void setup() {
         "diberikan.");
     Serial.println("GLOBAL: Beralih ke mode Offline.");
     isOfflineMode = true;
-    WiFi.mode(WIFI_AP);
   } else if (WiFi.status() == WL_CONNECTED) {
     Serial.print("WiFi Station: Terhubung ke WiFi dengan IP Address: ");
     Serial.println(WiFi.localIP());
@@ -153,6 +161,19 @@ void setup() {
 
   WiFi.softAPConfig(IP_ADDRESS, GATEWAY, NETMASK);
   WiFi.softAP(AP_SSID, AP_PASS, AP_CHANNEL, AP_DISCOVERABLE, AP_MAX_CONNECTION);
+
+  String apName = AP_SSID;
+  String apPass = AP_PASS;
+  String condition = (WiFi.status() == WL_CONNECTED) ? "online" : "offline";
+  String stationIP = WiFi.localIP().toString();
+  String apIP = WiFi.softAPIP().toString();
+
+  display.clear();
+  String dataToSend = "{\"apName\":\"" + apName + "\", \"apPass\": \"" +
+                      apPass + "\", \"condition\": \"" + condition +
+                      "\", \"stationIP\": \"" + stationIP + "\", \"apIP\": \"" +
+                      apIP + "\"}";
+  qrcode.create(dataToSend);
 
   Serial.print("WiFi AP: IP Address Access Point: ");
   Serial.println(WiFi.softAPIP());
