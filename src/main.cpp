@@ -391,6 +391,14 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
         }
       }
 
+      if (from == "lamp-1") {
+        Serial.println("  > Data from Lamp! (lmp)");
+
+        String feedback = receivedDataWebsocket["feedback"].as<String>();
+
+        Serial.println("    ==> " + feedback);
+      }
+
       if (from == "light-sensor") {
         Serial.println("  > Data from Light Sensor! (LiSn)");
 
