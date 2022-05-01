@@ -1,6 +1,7 @@
 //$ Include Library
 #include <Arduino.h>
 #include <AsyncTCP.h>
+#include <EEPROM.h>
 #include <ESPAsyncWebServer.h>
 #include <Firebase_ESP_Client.h>
 #include <SPI.h>
@@ -34,8 +35,15 @@
 #define DATABASE_URL \
   "https://"         \
   "home-automation-eee43-default-rtdb.asia-southeast1.firebasedatabase.app/"
-#define USER_EMAIL "Merza.bolivar@Gmail.com"
-#define USER_PASSWORD "iniPassword?"
+#define USER_EMAIL "hardware@alive.me"
+#define USER_PASSWORD \
+  "V2hhdCBhcmUgeW91IGxvb2tpbmcgZm9yIGJ1ZGR5PwotIE1lcnphIEJvbGl2YXI="
+
+//$ Define EEPROM Size
+#define EEPROM_SIZE 512
+
+//$ Config Address Saved in EEPROM
+#define HAS_INIT 0
 
 SSD1306 display(0x3C, 21, 22);
 QRcode qrcode(&display);
@@ -103,10 +111,15 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len);
 void initWebSocket();
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
              AwsEventType type, void *arg, uint8_t *data, size_t len);
+void initWiFiFile();
+void initMainFile();
+void getWiFiCredFromSPIFFS();
 
 //* VOID SETUP
 void setup() {
   Serial.begin(115200);
+
+  EEPROM.begin(EEPROM_SIZE);
 
   display.init();
   display.write("Hello!");
@@ -114,29 +127,24 @@ void setup() {
 
   qrcode.init();
 
+  char hasInit = EEPROM.read(HAS_INIT);
+
   if (!SPIFFS.begin(true)) {
     Serial.println("SPIFFS: Error Mount SPIFFS");
     return;
   }
 
-  File file = SPIFFS.open("/wifi_cred.json");
+  if (hasInit == 255) {
+    Serial.println("Initializing Everything");
 
-  if (!file) {
-    Serial.println("SPIFFS: Error Open File 2");
-    return;
+    initWiFiFile();
+    initMainFile();
+
+    EEPROM.write(HAS_INIT, 1);
+    EEPROM.commit();
   }
 
-  while (file.available()) {
-    wifi_buffer += file.readString();
-  }
-
-  deserializeJson(wifi_cred, wifi_buffer);
-
-  wifi_ssid = wifi_cred["ssid"].as<String>();
-  wifi_pass = wifi_cred["pass"].as<String>();
-
-  Serial.println(wifi_ssid);
-  Serial.println(wifi_pass);
+  getWiFiCredFromSPIFFS();
 
   WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
   Serial.println();
@@ -164,13 +172,12 @@ void setup() {
 
   String apName = AP_SSID;
   String apPass = AP_PASS;
-  String condition = (WiFi.status() == WL_CONNECTED) ? "online" : "offline";
   String stationIP = WiFi.localIP().toString();
   String apIP = WiFi.softAPIP().toString();
 
   display.clear();
   String dataToSend = "{\"apName\":\"" + apName + "\", \"apPass\": \"" +
-                      apPass + "\", \"condition\": \"" + condition +
+                      apPass + "\", \"serverName\": \"" + WiFi.macAddress() +
                       "\", \"stationIP\": \"" + stationIP + "\", \"apIP\": \"" +
                       apIP + "\"}";
   qrcode.create(dataToSend);
@@ -200,6 +207,19 @@ void setup() {
 
     Firebase.RTDB.setStreamCallback(&stream, streamCallback,
                                     streamTimeoutCallback);
+
+    if (Firebase.RTDB.getString(&fbdo,
+                                "homes/" + WiFi.macAddress() + "/macAddress")) {
+      if (fbdo.dataTypeEnum() == fb_esp_rtdb_data_type_string) {
+        Serial.println(fbdo.to<String>());
+      }
+    } else {
+      Serial.println(
+          "GLOBAL: Device isn't registered in Firebase, registering...");
+      Firebase.RTDB.setString(&fbdo,
+                              "homes/" + WiFi.macAddress() + "/macAddress",
+                              WiFi.macAddress());
+    }
   }
 }
 
@@ -502,4 +522,57 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
 void initWebSocket() {
   ws.onEvent(onEvent);
   server.addHandler(&ws);
+}
+
+void initWiFiFile() {
+  File file = SPIFFS.open("/wifi_cred.json", FILE_WRITE);
+  if (!file) {
+    Serial.println("- failed to open file for writing");
+    return;
+  }
+
+  String message =
+      "{\"ssid\": \"ZTE_2.4G_bcr2p4\", \"pass\": \"tokinyong_2Sm2HVMq\"}";
+  if (file.print(message)) {
+    Serial.println("- File Written");
+  } else {
+    Serial.println("- Write Failed");
+  }
+}
+
+void initMainFile() {
+  File file = SPIFFS.open("/main.json", FILE_WRITE);
+  if (!file) {
+    Serial.println("- Failed to open file for writing");
+    return;
+  }
+
+  String message = "{\"lamps\": {}, \"plugs\": {}, \"sensors\": {}}";
+
+  if (file.print(message)) {
+    Serial.println("- File Written");
+  } else {
+    Serial.println("- Write Failed");
+  }
+}
+
+void getWiFiCredFromSPIFFS() {
+  File file = SPIFFS.open("/wifi_cred.json");
+
+  if (!file) {
+    Serial.println("SPIFFS: Error Open File 2");
+    return;
+  }
+
+  while (file.available()) {
+    wifi_buffer += file.readString();
+  }
+
+  deserializeJson(wifi_cred, wifi_buffer);
+
+  wifi_ssid = wifi_cred["ssid"].as<String>();
+  wifi_pass = wifi_cred["pass"].as<String>();
+
+  Serial.println(wifi_ssid);
+  Serial.println(wifi_pass);
 }
