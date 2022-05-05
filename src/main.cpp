@@ -5,6 +5,7 @@
 #include <EEPROM.h>
 #include <ESPAsyncWebServer.h>
 #include <Firebase_ESP_Client.h>
+#include <RTClib.h>
 #include <SPI.h>
 #include <SPIFFS.h>
 #include <SSD1306.h>
@@ -79,6 +80,10 @@ String main_buffer;
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
+//* RTC Initialization
+RTC_DS3231 rtc;
+unsigned long prevMillis = 0;
+
 //* Firebase Variable
 unsigned long sendDataPrevMillis = 0;
 int count = 0;
@@ -126,6 +131,18 @@ void getMainDataFromSPIFFS();
 //* VOID SETUP
 void setup() {
   Serial.begin(115200);
+
+  if (!rtc.begin()) {
+    Serial.println("GLOBAL: RTC Not Connected");
+    Serial.flush();
+
+    while (1) delay(10);
+  }
+
+  if (rtc.lostPower()) {
+    Serial.println("RTC Oscillator is dead.");
+    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  }
 
   EEPROM.begin(EEPROM_SIZE);
 
@@ -235,6 +252,14 @@ void setup() {
 //* VOID LOOP
 void loop() {
   ws.cleanupClients();
+
+  DateTime now = rtc.now();
+  if (millis() - prevMillis >= 1000) {
+    prevMillis = millis();
+
+    Serial.println((String)now.hour() + " : " + (String)now.minute() + " : " +
+                   (String)now.second());
+  }
 
   if (firebaseDataChanged) {
     firebaseDataChanged = false;
