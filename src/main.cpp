@@ -1,5 +1,6 @@
 //$ Include Library
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <AsyncTCP.h>
 #include <EEPROM.h>
 #include <ESPAsyncWebServer.h>
