@@ -9,7 +9,6 @@
 #include <SSD1306.h>
 #include <WiFi.h>
 #include <Wire.h>
-#include <painlessMesh.h>
 #include <qrcode.h>
 
 //$ Firebase Addons
