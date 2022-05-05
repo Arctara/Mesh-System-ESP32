@@ -44,9 +44,11 @@
 
 //$ Config Address Saved in EEPROM
 #define HAS_INIT 0
-#define LAMP_COUNTER 1
-#define PLUG_COUNTER 2
-#define SENSOR_COUTNER 3
+
+#define LAMP_COUNT 255
+#define PLUG_COUNT 255
+#define SOCKET_COUNT 5
+#define SENSOR_COUNT 255
 
 SSD1306 display(0x3C, 21, 22);
 QRcode qrcode(&display);
@@ -71,9 +73,6 @@ String wifi_ssid;
 String wifi_pass;
 
 DynamicJsonDocument main_data(1024);
-DynamicJsonDocument lamps(1024);
-DynamicJsonDocument plugs(1024);
-DynamicJsonDocument sensors(1024);
 String main_buffer;
 
 //* WebSocket Configuration
@@ -86,12 +85,7 @@ int count = 0;
 volatile boolean firebaseDataChanged = false;
 
 //* Firebase Write Location
-const String movementSensorLoc =
-    "homes/" + WiFi.macAddress() + "/sensors/sensor-1";
-const String lightSensorLoc =
-    "homes/" + WiFi.macAddress() + "/sensors/sensor-2";
-const String moistureSensorLoc =
-    "homes/" + WiFi.macAddress() + "/sensors/sensor-3";
+const String sensorLoc = "homes/" + WiFi.macAddress() + "/sensors";
 const String plugLoc = "homes/" + WiFi.macAddress() + "/plugs";
 
 //* Struct Used for Firebase Data
@@ -155,15 +149,8 @@ void setup() {
     initMainFile();
 
     EEPROM.write(HAS_INIT, 1);
-    EEPROM.write(LAMP_COUNTER, 1);
-    EEPROM.write(PLUG_COUNTER, 1);
-    EEPROM.write(SENSOR_COUTNER, 1);
     EEPROM.commit();
   }
-
-  lampCounter = EEPROM.read(LAMP_COUNTER);
-  plugCounter = EEPROM.read(PLUG_COUNTER);
-  sensorCounter = EEPROM.read(SENSOR_COUTNER);
 
   getWiFiCredFromSPIFFS();
   getMainDataFromSPIFFS();
@@ -256,130 +243,42 @@ void loop() {
     String deviceCondition = receivedDataFirebase.data;
 
     if (deviceType == "lamps") {
-      if (deviceName == "lamp-1") {
-        if (deviceCondition == "true") {
-          target = "lamp-1";
-          conditionToSendWebsocket = true;
-          sendMessage();
-          Serial.println("GLOBAL: Lampu 1 menyala!");
-        } else {
-          target = "lamp-1";
-          conditionToSendWebsocket = false;
-          sendMessage();
-          Serial.println("GLOBAL: Lampu 1 mati!");
-        }
-      } else if (deviceName == "lamp-2") {
-        if (deviceCondition == "true") {
-          target = "lamp-2";
-          conditionToSendWebsocket = true;
-          sendMessage();
-          Serial.println("GLOBAL: Lampu 2 menyala!");
-        } else {
-          target = "lamp-2";
-          conditionToSendWebsocket = false;
-          sendMessage();
-          Serial.println("GLOBAL: Lampu 2 mati!");
-        }
-      } else if (deviceName == "lamp-3") {
-        if (deviceCondition == "true") {
-          target = "lamp-3";
-          conditionToSendWebsocket = true;
-          sendMessage();
-          Serial.println("GLOBAL: Lampu 3 menyala!");
-        } else {
-          target = "lamp-3";
-          conditionToSendWebsocket = false;
-          sendMessage();
-          Serial.println("GLOBAL: Lampu 3 mati!");
-        }
-      } else if (deviceName == "lamp-4") {
-        if (deviceCondition == "true") {
-          target = "lamp-4";
-          conditionToSendWebsocket = true;
-          sendMessage();
-          Serial.println("GLOBAL: Lampu 4 menyala!");
-        } else {
-          target = "lamp-4";
-          conditionToSendWebsocket = false;
-          sendMessage();
-          Serial.println("GLOBAL: Lampu 4 mati!");
-        }
-      } else if (deviceName == "lamp-5") {
-        if (deviceCondition == "true") {
-          target = "lamp-5";
-          conditionToSendWebsocket = true;
-          sendMessage();
-          Serial.println("GLOBAL: Lampu 5 menyala!");
-        } else {
-          target = "lamp-5";
-          conditionToSendWebsocket = false;
-          sendMessage();
-          Serial.println("GLOBAL: Lampu 5 mati!");
+      for (int i = 1; i <= LAMP_COUNT; i++) {
+        if (deviceName == "lamp-" + (String)i) {
+          if (deviceCondition == "true") {
+            target = "lamp-" + (String)i;
+            conditionToSendWebsocket = true;
+            sendMessage();
+            Serial.println("GLOBAL: Lampu " + (String)i + " menyala!");
+          } else {
+            target = "lamp-" + (String)i;
+            conditionToSendWebsocket = false;
+            sendMessage();
+            Serial.println("GLOBAL: Lampu " + (String)i + " mati!");
+          }
         }
       }
     } else if (deviceType == "plugs") {
       String deviceSubName = getValue(receivedDataFirebase.dataPath, '/', 6);
 
-      if (deviceName == "plug-1") {
-        if (deviceSubName == "socket-1") {
-          if (deviceCondition == "true") {
-            target = "plug-1/socket-1";
-            conditionToSendWebsocket = true;
-            sendMessage();
-            Serial.println("GLOBAL: Stopkontak 1 => Socket 1 menyala!");
-          } else {
-            target = "plug-1/socket-1";
-            conditionToSendWebsocket = false;
-            sendMessage();
-            Serial.println("GLOBAL: Stopkontak 1 => Socket 1 mati!");
-          }
-        } else if (deviceSubName == "socket-2") {
-          if (deviceCondition == "true") {
-            target = "plug-1/socket-2";
-            conditionToSendWebsocket = true;
-            sendMessage();
-            Serial.println("GLOBAL: Stopkontak 1 => Socket 2 menyala!");
-          } else {
-            target = "plug-1/socket-2";
-            conditionToSendWebsocket = false;
-            sendMessage();
-            Serial.println("GLOBAL: Stopkontak 1 => Socket 2 mati!");
-          }
-        } else if (deviceSubName == "socket-3") {
-          if (deviceCondition == "true") {
-            target = "plug-1/socket-3";
-            conditionToSendWebsocket = true;
-            sendMessage();
-            Serial.println("GLOBAL: Stopkontak 1 => Socket 3 menyala!");
-          } else {
-            target = "plug-1/socket-3";
-            conditionToSendWebsocket = false;
-            sendMessage();
-            Serial.println("GLOBAL: Stopkontak 1 => Socket 3 mati!");
-          }
-        } else if (deviceSubName == "socket-4") {
-          if (deviceCondition == "true") {
-            target = "plug-1/socket-4";
-            conditionToSendWebsocket = true;
-            sendMessage();
-            Serial.println("GLOBAL: Stopkontak 1 => Socket 4 menyala!");
-          } else {
-            target = "plug-1/socket-4";
-            conditionToSendWebsocket = false;
-            sendMessage();
-            Serial.println("GLOBAL: Stopkontak 1 => Socket 4 mati!");
-          }
-        } else if (deviceSubName == "socket-5") {
-          if (deviceCondition == "true") {
-            target = "plug-1/socket-5";
-            conditionToSendWebsocket = true;
-            sendMessage();
-            Serial.println("GLOBAL: Stopkontak 1 => Socket 5 menyala!");
-          } else {
-            target = "plug-1/socket-5";
-            conditionToSendWebsocket = false;
-            sendMessage();
-            Serial.println("GLOBAL: Stopkontak 1 => Socket 5 mati!");
+      for (int i = 1; i <= PLUG_COUNT; i++) {
+        if (deviceName == "plug-" + (String)i) {
+          for (int j = 1; j <= SOCKET_COUNT; j++) {
+            if (deviceSubName == "socket-" + (String)j) {
+              if (deviceCondition == "true") {
+                target = "plug-" + (String)i + "/socket-" + (String)j;
+                conditionToSendWebsocket = true;
+                sendMessage();
+                Serial.println("GLOBAL: Stopkontak " + (String)i +
+                               " => Socket " + (String)j + " menyala!");
+              } else {
+                target = "plug-" + (String)i + "/socket-" + (String)j;
+                conditionToSendWebsocket = false;
+                sendMessage();
+                Serial.println("GLOBAL: Stopkontak " + (String)i +
+                               " => Socket " + (String)j + " mati!");
+              }
+            }
           }
         }
       }
@@ -468,96 +367,84 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
 
     if (to == "center") {
       Serial.println("! Data for Center!");
-      if (from == "plug-1") {
-        Serial.println("  > Data from Plug! (Plg)");
+      for (int i = 1; i <= PLUG_COUNT; i++) {
+        if (from == "plug-" + (String)i) {
+          Serial.println("  > Data from Plug " + (String)i + "! (Plg" +
+                         (String)i + ")");
 
-        String socket = receivedDataWebsocket["socket"].as<String>();
-        bool condition = receivedDataWebsocket["condition"].as<bool>();
+          String socket = receivedDataWebsocket["socket"].as<String>();
+          bool condition = receivedDataWebsocket["condition"].as<bool>();
 
-        Serial.println("    ==> " + socket + " = " + condition);
+          Serial.println("    ==> " + socket + " = " + condition);
 
-        if (!isOfflineMode) {
-          Firebase.RTDB.setBool(
-              &fbdo, plugLoc + "/" + from + "/sockets/" + socket + "/feedback",
-              condition);
-        } else {
-          Serial.println("GLOBAL: Can't send data to Firebase.");
-          Serial.println("GLOBAL: Reason => Offline Mode.");
+          if (!isOfflineMode) {
+            Firebase.RTDB.setBool(
+                &fbdo,
+                plugLoc + "/" + from + "/sockets/" + socket + "/feedback",
+                condition);
+          } else {
+            Serial.println("GLOBAL: Can't send data to Firebase.");
+            Serial.println("GLOBAL: Reason => Offline Mode.");
+          }
         }
       }
 
-      if (from == "lamp-1") {
-        Serial.println("  > Data from Lamp! (lmp)");
+      for (int i = 1; i <= LAMP_COUNT; i++) {
+        if (from == "lamp-" + (String)i) {
+          Serial.println("  > Data from Lamp " + (String)i + "! (lmp)");
 
-        String feedback = receivedDataWebsocket["feedback"].as<String>();
+          String feedback = receivedDataWebsocket["feedback"].as<String>();
 
-        Serial.println("    ==> " + feedback);
-      }
-
-      if (from == "light-sensor") {
-        Serial.println("  > Data from Light Sensor! (LiSn)");
-
-        String data = receivedDataWebsocket["data"].as<String>();
-        String icon = "";
-
-        if (data == "Siang") {
-          icon = "sun";
-        } else if (data == "Malam") {
-          icon = "moon";
-        } else {
-          icon = "sun";
-        }
-
-        Serial.println("    ==> " + data);
-
-        if (!isOfflineMode) {
-          Firebase.RTDB.setString(&fbdo, lightSensorLoc + "/reading", data);
-          Firebase.RTDB.setString(&fbdo, lightSensorLoc + "/icon", icon);
-        } else {
-          Serial.println("GLOBAL: Can't send data to Firebase.");
-          Serial.println("GLOBAL: Reason => Offline Mode.");
+          Serial.println("    ==> " + feedback);
         }
       }
 
-      if (from == "movement-sensor") {
-        Serial.println("  > Data from Movement Sensor! (MvmSn)");
+      for (int i = 1; i <= SENSOR_COUNT; i++) {
+        if (from == "sensor-" + (String)i) {
+          String sensorType = receivedDataWebsocket["sensorType"].as<String>();
+          String data = receivedDataWebsocket["data"].as<String>();
+          String icon = "";
 
-        String data = receivedDataWebsocket["data"].as<String>();
-        String icon = "human";
+          if (sensorType == "lightSensor") {
+            if (data == "Siang") {
+              icon = "sun";
+            } else if (data == "Malam") {
+              icon = "moon";
+            } else {
+              icon = "sun";
+            }
 
-        Serial.println("    ==> " + data);
+            Serial.println("  > Data from Light Sensor! (LiSn)");
+          } else if (sensorType == "movementSensor") {
+            icon = "human";
 
-        if (!isOfflineMode) {
-          Firebase.RTDB.setString(&fbdo, movementSensorLoc + "/reading", data);
-          Firebase.RTDB.setString(&fbdo, movementSensorLoc + "/icon", icon);
-        } else {
-          Serial.println("GLOBAL: Can't send data to Firebase.");
-          Serial.println("GLOBAL: Reason => Offline Mode.");
-        }
-      }
+            Serial.println("  > Data from Movement Sensor! (MvmSn)");
+          } else if (sensorType == "moistureSensor") {
+            if (data == "Terlalu banyak air") {
+              icon = "wetter";
+            } else if (data == "Basah") {
+              icon = "wet";
+            } else {
+              icon = "dry";
+            }
 
-      if (from == "moisture-sensor") {
-        Serial.println("  > Data from Moisture Sensor! (MstSn)");
+            Serial.println("  > Data from Moisture Sensor! (MstSn)");
+          }
 
-        String data = receivedDataWebsocket["data"].as<String>();
-        String icon = "";
+          Serial.println("    ==> " + data);
 
-        if (data == "Terlalu banyak air") {
-          icon = "wetter";
-        } else if (data == "Basah") {
-          icon = "wet";
-        } else {
-          icon = "dry";
-        }
-
-        Serial.println("    ==> " + data);
-
-        if (!isOfflineMode) {
-          Firebase.RTDB.setString(&fbdo, moistureSensorLoc + "/reading", data);
-          Firebase.RTDB.setString(&fbdo, moistureSensorLoc + "/icon", icon);
-        } else {
-          Serial.println("GLOBAL: Can't send data to Firebase.");
-          Serial.println("GLOBAL: Reason => Offline Mode.");
+          if (!isOfflineMode) {
+            Firebase.RTDB.setString(
+                &fbdo, sensorLoc + "/sensor-" + (String)i + "/sensorType",
+                sensorType);
+            Firebase.RTDB.setString(
+                &fbdo, sensorLoc + "/sensor-" + (String)i + "/reading", data);
+            Firebase.RTDB.setString(
+                &fbdo, sensorLoc + "/sensor-" + (String)i + "/icon", icon);
+          } else {
+            Serial.println("GLOBAL: Can't send data to Firebase.");
+            Serial.println("GLOBAL: Reason => Offline Mode.");
+          }
         }
       }
 
