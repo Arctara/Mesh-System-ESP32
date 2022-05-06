@@ -93,6 +93,9 @@ volatile boolean firebaseDataChanged = false;
 const String sensorLoc = "homes/" + WiFi.macAddress() + "/sensors";
 const String plugLoc = "homes/" + WiFi.macAddress() + "/plugs";
 
+//* Device Name
+const String deviceName = "center";
+
 //* Struct Used for Firebase Data
 struct streamData {
   String streamPath;
@@ -390,7 +393,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     String from = receivedDataWebsocket["from"].as<String>();
     String to = receivedDataWebsocket["to"].as<String>();
 
-    if (to == "center") {
+    if (to == deviceName) {
       Serial.println("! Data for Center!");
       for (int i = 1; i <= PLUG_COUNT; i++) {
         if (from == "plug-" + (String)i) {
