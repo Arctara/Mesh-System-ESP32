@@ -13,6 +13,8 @@
 #include <Wire.h>
 #include <qrcode.h>
 
+#include <List.hpp>
+
 //$ Firebase Addons
 #include "addons/RTDBHelper.h"
 #include "addons/TokenHelper.h"
@@ -93,9 +95,6 @@ volatile boolean firebaseDataChanged = false;
 const String sensorLoc = "homes/" + WiFi.macAddress() + "/sensors";
 const String plugLoc = "homes/" + WiFi.macAddress() + "/plugs";
 
-//* Device Name
-const String deviceName = "center";
-
 //* Struct Used for Firebase Data
 struct streamData {
   String streamPath;
@@ -104,6 +103,25 @@ struct streamData {
   String eventType;
   String data;
 };
+
+struct schedule {
+  String id;
+  String target;
+  String targetId;
+  String trigger;
+  String timeMode;
+  String startHour;
+  String startMinute;
+  String stopHour;
+  String stopMinute;
+  String lengthOn;
+  String lengthOff;
+  String delay;
+  String sensorId;
+  String activeCondition;
+};
+
+List<schedule> schedules;
 
 //* Initialize Struct Data
 streamData receivedDataFirebase;
@@ -130,6 +148,7 @@ void initWiFiFile();
 void initMainFile();
 void getWiFiCredFromSPIFFS();
 void getMainDataFromSPIFFS();
+void getSchedulesData();
 
 //* VOID SETUP
 void setup() {
@@ -137,9 +156,9 @@ void setup() {
 
   if (!rtc.begin()) {
     Serial.println("GLOBAL: RTC Not Connected");
-    Serial.flush();
+    // Serial.flush();
 
-    while (1) delay(10);
+    // while (1) delay(10);
   }
 
   if (rtc.lostPower()) {
@@ -249,6 +268,9 @@ void setup() {
                               "homes/" + WiFi.macAddress() + "/macAddress",
                               WiFi.macAddress());
     }
+
+    Serial.println();
+    getSchedulesData();
   }
 }
 
@@ -256,24 +278,60 @@ void setup() {
 void loop() {
   ws.cleanupClients();
 
-  DateTime now = rtc.now();
-  if (millis() - prevMillis >= 1000) {
-    prevMillis = millis();
+  // DateTime now = rtc.now();
+  // if (millis() - prevMillis >= 30000) {
+  //   prevMillis = millis();
 
-    Serial.println((String)now.hour() + " : " + (String)now.minute() + " : " +
-                   (String)now.second());
-  }
+  //   for (int i = 0; i < schedules.getSize(); i++) {
+  //     Serial.println(String(i) + "=======================================");
+  //     Serial.println(schedules[i].id);
+  //     Serial.println(schedules[i].target);
+  //     Serial.println(schedules[i].targetId);
+  //     Serial.println(schedules[i].trigger);
+  //     if (schedules[i].trigger == "time") {
+  //       Serial.println(schedules[i].timeMode);
+  //       if (schedules[i].timeMode == "timeBased") {
+  //         Serial.println(schedules[i].startHour);
+  //         Serial.println(schedules[i].startMinute);
+  //         Serial.println(schedules[i].stopHour);
+  //         Serial.println(schedules[i].stopMinute);
+  //       } else if (schedules[i].timeMode == "interval") {
+  //         Serial.println(schedules[i].startHour);
+  //         Serial.println(schedules[i].startMinute);
+  //         Serial.println(schedules[i].stopHour);
+  //         Serial.println(schedules[i].stopMinute);
+  //         Serial.println(schedules[i].lengthOn);
+  //         Serial.println(schedules[i].lengthOff);
+  //       } else {
+  //         Serial.println(schedules[i].delay);
+  //       }
+  //     } else if (schedules[i].trigger == "light" ||
+  //                schedules[i].trigger == "movement" ||
+  //                schedules[i].trigger == "moisture") {
+  //       Serial.println(schedules[i].sensorId);
+  //       Serial.println(schedules[i].activeCondition);
+  //     }
+  //     Serial.println("=======================================");
+  //   }
+
+  // Serial.println(WiFi.softAPgetStationNum());
+
+  // Serial.println((String)now.hour() + " : " + (String)now.minute() + " :
+  // "
+  // +
+  //  (String)now.second());
+  // }
 
   if (firebaseDataChanged) {
     firebaseDataChanged = false;
-    String deviceType = getValue(receivedDataFirebase.dataPath, '/', 3);
-    String deviceName = getValue(receivedDataFirebase.dataPath, '/', 4);
-    String deviceCondition = receivedDataFirebase.data;
+    String head = getValue(receivedDataFirebase.dataPath, '/', 3);
+    String neck = getValue(receivedDataFirebase.dataPath, '/', 4);
+    String currentData = receivedDataFirebase.data;
 
-    if (deviceType == "lamps") {
+    if (head == "lamps") {
       for (int i = 1; i <= LAMP_COUNT; i++) {
-        if (deviceName == "lamp-" + (String)i) {
-          if (deviceCondition == "true") {
+        if (neck == "lamp-" + (String)i) {
+          if (currentData == "true") {
             target = "lamp-" + (String)i;
             conditionToSendWebsocket = true;
             sendMessage();
@@ -286,14 +344,14 @@ void loop() {
           }
         }
       }
-    } else if (deviceType == "plugs") {
+    } else if (head == "plugs") {
       String deviceSubName = getValue(receivedDataFirebase.dataPath, '/', 6);
 
       for (int i = 1; i <= PLUG_COUNT; i++) {
-        if (deviceName == "plug-" + (String)i) {
+        if (neck == "plug-" + (String)i) {
           for (int j = 1; j <= SOCKET_COUNT; j++) {
             if (deviceSubName == "socket-" + (String)j) {
-              if (deviceCondition == "true") {
+              if (currentData == "true") {
                 target = "plug-" + (String)i + "/socket-" + (String)j;
                 conditionToSendWebsocket = true;
                 sendMessage();
@@ -310,6 +368,29 @@ void loop() {
           }
         }
       }
+    } else if (head == "schedules") {
+      Serial.println(receivedDataFirebase.dataPath);
+      Serial.println();
+      String schedId = getValue(receivedDataFirebase.dataPath, '/', 4);
+      bool newSched = true;
+
+      Serial.println("Loop Start");
+      for (int i = 0; i < schedules.getSize(); i++) {
+        Serial.println(schedules[i].id);
+        if (schedules[i].id == schedId) {
+          newSched = false;
+          break;
+        }
+      }
+      Serial.println("Loop End");
+      Serial.println();
+
+      if (!newSched) {
+        Serial.println("GLOBAL: Old Schedule. '3')");
+      } else {
+        Serial.println("GLOBAL: New Schedule! >_<");
+      }
+      getSchedulesData();
     }
   }
 }
@@ -393,7 +474,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     String from = receivedDataWebsocket["from"].as<String>();
     String to = receivedDataWebsocket["to"].as<String>();
 
-    if (to == deviceName) {
+    if (to == "center") {
       Serial.println("! Data for Center!");
       for (int i = 1; i <= PLUG_COUNT; i++) {
         if (from == "plug-" + (String)i) {
@@ -580,4 +661,54 @@ void getMainDataFromSPIFFS() {
   }
 
   deserializeJson(main_data, main_buffer);
+}
+
+void getSchedulesData() {
+  if (Firebase.RTDB.getString(&fbdo,
+                              "homes/" + WiFi.macAddress() + "/schedules")) {
+    schedules.clear();
+    DynamicJsonDocument listJson(1024);
+    DynamicJsonDocument sD(1024);
+    deserializeJson(listJson, fbdo.to<String>());
+    JsonArray arrays = listJson.as<JsonArray>();
+    int i = 0;
+    for (JsonVariant v : arrays) {
+      if (v.as<String>() != "null") {
+        schedule s;
+        deserializeJson(sD, v.as<String>());
+        s.id = String(i);
+        s.target = sD["target"].as<String>();
+        s.targetId = sD["targetId"].as<String>();
+        s.trigger = sD["trigger"].as<String>();
+        if (s.trigger == "time") {
+          s.timeMode = sD["timeMode"].as<String>();
+          if (s.timeMode == "timeBased") {
+            s.startHour = getValue(sD["timeStart"].as<String>(), ':', 0);
+            s.startMinute = getValue(sD["timeStart"].as<String>(), ':', 1);
+            s.stopHour = getValue(sD["timeStop"].as<String>(), ':', 0);
+            s.stopMinute = getValue(sD["timeStop"].as<String>(), ':', 1);
+          } else if (s.timeMode == "interval") {
+            s.startHour = getValue(sD["timeStart"].as<String>(), ':', 0);
+            s.startMinute = getValue(sD["timeStart"].as<String>(), ':', 1);
+            s.stopHour = getValue(sD["timeStop"].as<String>(), ':', 0);
+            s.stopMinute = getValue(sD["timeStop"].as<String>(), ':', 1);
+            s.lengthOn = sD["lengthOn"].as<String>();
+            s.lengthOff = sD["lengthOff"].as<String>();
+          } else if (s.timeMode == "delay") {
+            s.delay = sD["delay"].as<String>();
+          }
+        } else if (s.trigger == "light" || s.trigger == "movement" ||
+                   s.trigger == "moisture") {
+          s.sensorId = sD["sensorId"].as<String>();
+          s.activeCondition = sD["activeCondition"].as<String>();
+        }
+        schedules.add(s);
+        sD.clear();
+      }
+      i++;
+    }
+    Serial.println(i);
+  } else {
+    Serial.println("GLOBAL: No Schedule.");
+  }
 }
