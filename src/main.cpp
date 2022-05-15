@@ -75,7 +75,7 @@ DynamicJsonDocument wifi_cred(256);
 String wifi_ssid;
 String wifi_pass;
 
-DynamicJsonDocument main_data(1024);
+// DynamicJsonDocument main_data(1024);
 String main_buffer;
 
 //* WebSocket Configuration
@@ -106,6 +106,9 @@ struct streamData {
 
 struct schedule {
   String id;
+  bool active = false;
+  bool subActive = false;
+  bool moreSubActive = false;
   String target;
   String targetId;
   String trigger;
@@ -119,6 +122,8 @@ struct schedule {
   String delay;
   String sensorId;
   String activeCondition;
+  unsigned long prevMillisOn = 0;
+  unsigned long prevMillisOff = 0;
 };
 
 List<schedule> schedules;
@@ -127,8 +132,7 @@ List<schedule> schedules;
 streamData receivedDataFirebase;
 
 //* Global Variable Declaration
-DynamicJsonDocument dataToSendWebsocket(256);
-DynamicJsonDocument receivedDataWebsocket(256);
+
 String target;
 boolean conditionToSendWebsocket;
 boolean isOfflineMode = false;
@@ -161,10 +165,10 @@ void setup() {
     // while (1) delay(10);
   }
 
-  if (rtc.lostPower()) {
-    Serial.println("RTC Oscillator is dead.");
-    rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-  }
+  // if (rtc.lostPower()) {
+  // Serial.println("RTC Oscillator is dead.");
+  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  // }
 
   EEPROM.begin(EEPROM_SIZE);
 
@@ -223,13 +227,6 @@ void setup() {
   String stationIP = WiFi.localIP().toString();
   String apIP = WiFi.softAPIP().toString();
 
-  display.clear();
-  String dataToSend = "{\"apName\":\"" + apName + "\", \"apPass\": \"" +
-                      apPass + "\", \"serverName\": \"" + WiFi.macAddress() +
-                      "\", \"stationIP\": \"" + stationIP + "\", \"apIP\": \"" +
-                      apIP + "\"}";
-  qrcode.create(dataToSend);
-
   Serial.print("WiFi AP: IP Address Access Point: ");
   Serial.println(WiFi.softAPIP());
 
@@ -272,55 +269,137 @@ void setup() {
     Serial.println();
     getSchedulesData();
   }
+
+  display.clear();
+  String dataToSend = "{\"apName\":\"" + apName + "\", \"apPass\": \"" +
+                      apPass + "\", \"serverName\": \"" + WiFi.macAddress() +
+                      "\", \"stationIP\": \"" + stationIP + "\", \"apIP\": \"" +
+                      apIP + "\"}";
+  qrcode.create(dataToSend);
 }
 
 //* VOID LOOP
 void loop() {
   ws.cleanupClients();
 
-  // DateTime now = rtc.now();
-  // if (millis() - prevMillis >= 30000) {
-  //   prevMillis = millis();
+  DateTime now = rtc.now();
+  if (millis() - prevMillis >= 5000) {
+    prevMillis = millis();
 
-  //   for (int i = 0; i < schedules.getSize(); i++) {
-  //     Serial.println(String(i) + "=======================================");
-  //     Serial.println(schedules[i].id);
-  //     Serial.println(schedules[i].target);
-  //     Serial.println(schedules[i].targetId);
-  //     Serial.println(schedules[i].trigger);
-  //     if (schedules[i].trigger == "time") {
-  //       Serial.println(schedules[i].timeMode);
-  //       if (schedules[i].timeMode == "timeBased") {
-  //         Serial.println(schedules[i].startHour);
-  //         Serial.println(schedules[i].startMinute);
-  //         Serial.println(schedules[i].stopHour);
-  //         Serial.println(schedules[i].stopMinute);
-  //       } else if (schedules[i].timeMode == "interval") {
-  //         Serial.println(schedules[i].startHour);
-  //         Serial.println(schedules[i].startMinute);
-  //         Serial.println(schedules[i].stopHour);
-  //         Serial.println(schedules[i].stopMinute);
-  //         Serial.println(schedules[i].lengthOn);
-  //         Serial.println(schedules[i].lengthOff);
-  //       } else {
-  //         Serial.println(schedules[i].delay);
-  //       }
-  //     } else if (schedules[i].trigger == "light" ||
-  //                schedules[i].trigger == "movement" ||
-  //                schedules[i].trigger == "moisture") {
-  //       Serial.println(schedules[i].sensorId);
-  //       Serial.println(schedules[i].activeCondition);
-  //     }
-  //     Serial.println("=======================================");
-  //   }
+    Serial.println("================================================");
+    Serial.println(String(now.hour()) + " : " + String(now.minute()));
+    Serial.println("Free Heap: " + String(ESP.getFreeHeap()));
+    Serial.println("Free PSRam: " + String(ESP.getFreePsram()));
+    Serial.println("================================================");
 
-  // Serial.println(WiFi.softAPgetStationNum());
-
-  // Serial.println((String)now.hour() + " : " + (String)now.minute() + " :
-  // "
-  // +
-  //  (String)now.second());
-  // }
+    for (int i = 0; i < schedules.getSize(); i++) {
+      if (schedules[i].trigger == "time" &&
+          schedules[i].timeMode == "timeBased") {
+        schedule timeBased = schedules[i];
+        if (schedules[i].startHour.toInt() == now.hour() &&
+            schedules[i].startMinute.toInt() == now.minute()) {
+          if (schedules[i].active == false) {
+            Serial.println("Waktu masuk jadwal ID" + schedules[i].id);
+            Serial.println("Target: " + schedules[i].targetId);
+            timeBased.active = true;
+            schedules.remove(i);
+            schedules.addAtIndex(i, timeBased);
+          }
+        }
+        if (schedules[i].stopHour.toInt() == now.hour() &&
+            schedules[i].stopMinute.toInt() == now.minute()) {
+          if (schedules[i].active == true) {
+            Serial.println("Waktu keluar jadwal ID" + schedules[i].id);
+            Serial.println("Target: " + schedules[i].targetId);
+            timeBased.active = false;
+            schedules.remove(i);
+            schedules.addAtIndex(i, timeBased);
+          }
+        }
+      }
+      if (schedules[i].trigger == "time" &&
+          schedules[i].timeMode == "interval") {
+        schedule interval = schedules[i];
+        if (schedules[i].startHour.toInt() == now.hour() &&
+            schedules[i].startMinute.toInt() == now.minute()) {
+          Serial.println("Waktu masuk jadwal ID" + schedules[i].id);
+          if (schedules[i].active == false) {
+            Serial.println("Activing Device");
+            interval.active = true;
+            schedules.remove(i);
+            schedules.addAtIndex(i, interval);
+          }
+        }
+        if (schedules[i].stopHour.toInt() == now.hour() &&
+            schedules[i].stopMinute.toInt() == now.minute()) {
+          Serial.println("Waktu keluar jadwal ID" + schedules[i].id);
+          if (schedules[i].active == true) {
+            Serial.println("Deactivating Device");
+            interval.active = false;
+            schedules.remove(i);
+            schedules.addAtIndex(i, interval);
+          }
+        }
+        if (schedules[i].active == true) {
+          Serial.println("Interval Schedule Active");
+          if (schedules[i].subActive == false) {
+            Serial.println("Interval device Off");
+            if (millis() - schedules[i].prevMillisOn <=
+                (schedules[i].lengthOn.toInt() * 60000l)) {
+              Serial.println("In ON Millis");
+              if (schedules[i].moreSubActive == false) {
+                Serial.println("Interval: Active...");
+                interval.moreSubActive = true;
+                schedules.remove(i);
+                schedules.addAtIndex(i, interval);
+              }
+            } else {
+              Serial.println("Not in ON Millis");
+              interval.prevMillisOn = millis();
+              interval.prevMillisOff = millis();
+              interval.moreSubActive = false;
+              interval.subActive = true;
+              schedules.remove(i);
+              schedules.addAtIndex(i, interval);
+            }
+          }
+          if (schedules[i].subActive == true) {
+            Serial.println("Interval device On");
+            if (millis() - schedules[i].prevMillisOff <=
+                (schedules[i].lengthOff.toInt() * 60000l)) {
+              Serial.println("In OFF Millis");
+              if (schedules[i].moreSubActive == false) {
+                Serial.println("Interval: Inactive...");
+                interval.moreSubActive = true;
+                schedules.remove(i);
+                schedules.addAtIndex(i, interval);
+              }
+            } else {
+              Serial.println("Not in OFF Millis");
+              interval.prevMillisOn = millis();
+              interval.prevMillisOff = millis();
+              interval.moreSubActive = false;
+              interval.subActive = false;
+              schedules.remove(i);
+              schedules.addAtIndex(i, interval);
+            }
+          }
+        }
+      }
+      if (schedules[i].trigger == "time" && schedules[i].timeMode == "delay") {
+        schedule delaySchedule = schedules[i];
+        if (millis() - schedules[i].prevMillisOn >=
+            (schedules[i].delay.toInt() * 60000l)) {
+          if (schedules[i].active == true) {
+            Serial.println("Turning off");
+            delaySchedule.active = false;
+            schedules.remove(i);
+            schedules.addAtIndex(i, delaySchedule);
+          }
+        }
+      }
+    }
+  }
 
   if (firebaseDataChanged) {
     firebaseDataChanged = false;
@@ -335,11 +414,33 @@ void loop() {
             target = "lamp-" + (String)i;
             conditionToSendWebsocket = true;
             sendMessage();
+            for (int i = 0; i < schedules.getSize(); i++) {
+              if (schedules[i].trigger == "time" &&
+                  schedules[i].timeMode == "delay" &&
+                  schedules[i].targetId == target) {
+                schedule currSchedule = schedules[i];
+                currSchedule.active = true;
+                currSchedule.prevMillisOn = millis();
+                schedules.remove(i);
+                schedules.addAtIndex(i, currSchedule);
+                Serial.println("GLOBAL: Delay Schedule Start!");
+              }
+            }
             Serial.println("GLOBAL: Lampu " + (String)i + " menyala!");
           } else {
             target = "lamp-" + (String)i;
             conditionToSendWebsocket = false;
             sendMessage();
+            for (int i = 0; i < schedules.getSize(); i++) {
+              if (schedules[i].trigger == "time" &&
+                  schedules[i].timeMode == "delay" &&
+                  schedules[i].targetId == target) {
+                schedule currSchedule = schedules[i];
+                currSchedule.active = false;
+                schedules.remove(i);
+                schedules.addAtIndex(i, currSchedule);
+              }
+            }
             Serial.println("GLOBAL: Lampu " + (String)i + " mati!");
           }
         }
@@ -431,6 +532,8 @@ void streamTimeoutCallback(bool timeout) {
 }
 
 void sendMessage() {
+  DynamicJsonDocument dataToSendWebsocket(256);
+
   dataToSendWebsocket["from"] = "center";
   dataToSendWebsocket["to"] = target;
   dataToSendWebsocket["condition"] = String(conditionToSendWebsocket);
@@ -468,6 +571,8 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   if (info->final && info->index == 0 && info->len == len &&
       info->opcode == WS_TEXT) {
     data[len] = 0;
+
+    DynamicJsonDocument receivedDataWebsocket(256);
 
     deserializeJson(receivedDataWebsocket, data);
 
@@ -660,7 +765,7 @@ void getMainDataFromSPIFFS() {
     main_buffer += file.readString();
   }
 
-  deserializeJson(main_data, main_buffer);
+  // deserializeJson(main_data, main_buffer);
 }
 
 void getSchedulesData() {
@@ -671,6 +776,7 @@ void getSchedulesData() {
     DynamicJsonDocument sD(1024);
     deserializeJson(listJson, fbdo.to<String>());
     JsonArray arrays = listJson.as<JsonArray>();
+    listJson.clear();
     int i = 0;
     for (JsonVariant v : arrays) {
       if (v.as<String>() != "null") {
