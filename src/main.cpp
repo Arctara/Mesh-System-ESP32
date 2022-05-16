@@ -92,6 +92,7 @@ int count = 0;
 volatile boolean firebaseDataChanged = false;
 
 //* Firebase Write Location
+const String lampLoc = "homes/" + WiFi.macAddress() + "/lamps";
 const String sensorLoc = "homes/" + WiFi.macAddress() + "/sensors";
 const String plugLoc = "homes/" + WiFi.macAddress() + "/plugs";
 
@@ -167,7 +168,7 @@ void setup() {
 
   // if (rtc.lostPower()) {
   // Serial.println("RTC Oscillator is dead.");
-  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  // rtc.adjust(DateTime("2022-05-16T10:15:20"));
   // }
 
   EEPROM.begin(EEPROM_SIZE);
@@ -283,13 +284,17 @@ void loop() {
   ws.cleanupClients();
 
   DateTime now = rtc.now();
+  if (Firebase.isTokenExpired() == true) {
+    Serial.println("Firebase Token Expired");
+    Serial.println("Restarting system to get new token...");
+    ESP.restart();
+  }
+
   if (millis() - prevMillis >= 5000) {
     prevMillis = millis();
 
     Serial.println("================================================");
     Serial.println(String(now.hour()) + " : " + String(now.minute()));
-    Serial.println("Free Heap: " + String(ESP.getFreeHeap()));
-    Serial.println("Free PSRam: " + String(ESP.getFreePsram()));
     Serial.println("================================================");
 
     for (int i = 0; i < schedules.getSize(); i++) {
@@ -304,6 +309,36 @@ void loop() {
             timeBased.active = true;
             schedules.remove(i);
             schedules.addAtIndex(i, timeBased);
+            if (schedules[i].target == "lamp") {
+              target = schedules[i].targetId;
+              conditionToSendWebsocket = true;
+              sendMessage();
+              if (!isOfflineMode) {
+                Firebase.RTDB.setBool(
+                    &fbdo, lampLoc + "/" + schedules[i].targetId + "/condition",
+                    true);
+              } else {
+                Serial.println("GLOBAL: Can't send data to Firebase.");
+                Serial.println("GLOBAL: Reason => Offline Mode.");
+              }
+            }
+            if (schedules[i].target == "plug") {
+              target = schedules[i].targetId + "/all";
+              conditionToSendWebsocket = true;
+              sendMessage();
+              if (!isOfflineMode) {
+                for (int i = 0; i < SOCKET_COUNT; i++) {
+                  Firebase.RTDB.setBool(&fbdo,
+                                        plugLoc + "/" + schedules[i].targetId +
+                                            "/sockets/" + "socket-" +
+                                            (String)i + "/feedback",
+                                        true);
+                }
+              } else {
+                Serial.println("GLOBAL: Can't send data to Firebase.");
+                Serial.println("GLOBAL: Reason => Offline Mode.");
+              }
+            }
           }
         }
         if (schedules[i].stopHour.toInt() == now.hour() &&
@@ -314,6 +349,36 @@ void loop() {
             timeBased.active = false;
             schedules.remove(i);
             schedules.addAtIndex(i, timeBased);
+            if (schedules[i].target == "lamp") {
+              target = schedules[i].targetId;
+              conditionToSendWebsocket = false;
+              sendMessage();
+              if (!isOfflineMode) {
+                Firebase.RTDB.setBool(
+                    &fbdo, lampLoc + "/" + schedules[i].targetId + "/condition",
+                    false);
+              } else {
+                Serial.println("GLOBAL: Can't send data to Firebase.");
+                Serial.println("GLOBAL: Reason => Offline Mode.");
+              }
+            }
+            if (schedules[i].target == "plug") {
+              target = schedules[i].targetId + "/all";
+              conditionToSendWebsocket = false;
+              sendMessage();
+              if (!isOfflineMode) {
+                for (int i = 0; i < SOCKET_COUNT; i++) {
+                  Firebase.RTDB.setBool(&fbdo,
+                                        plugLoc + "/" + schedules[i].targetId +
+                                            "/sockets/" + "socket-" +
+                                            (String)i + "/feedback",
+                                        false);
+                }
+              } else {
+                Serial.println("GLOBAL: Can't send data to Firebase.");
+                Serial.println("GLOBAL: Reason => Offline Mode.");
+              }
+            }
           }
         }
       }
@@ -322,22 +387,51 @@ void loop() {
         schedule interval = schedules[i];
         if (schedules[i].startHour.toInt() == now.hour() &&
             schedules[i].startMinute.toInt() == now.minute()) {
-          Serial.println("Waktu masuk jadwal ID" + schedules[i].id);
           if (schedules[i].active == false) {
             Serial.println("Activing Device");
+            interval.prevMillisOn = millis();
             interval.active = true;
             schedules.remove(i);
             schedules.addAtIndex(i, interval);
           }
         }
-        if (schedules[i].stopHour.toInt() == now.hour() &&
-            schedules[i].stopMinute.toInt() == now.minute()) {
-          Serial.println("Waktu keluar jadwal ID" + schedules[i].id);
+        if ((schedules[i].stopHour.toInt() == now.hour() &&
+             schedules[i].stopMinute.toInt() == now.minute())) {
           if (schedules[i].active == true) {
             Serial.println("Deactivating Device");
             interval.active = false;
             schedules.remove(i);
             schedules.addAtIndex(i, interval);
+            if (schedules[i].target == "lamp") {
+              target = schedules[i].targetId;
+              conditionToSendWebsocket = false;
+              sendMessage();
+              if (!isOfflineMode) {
+                Firebase.RTDB.setBool(
+                    &fbdo, lampLoc + "/" + schedules[i].targetId + "/condition",
+                    false);
+              } else {
+                Serial.println("GLOBAL: Can't send data to Firebase.");
+                Serial.println("GLOBAL: Reason => Offline Mode.");
+              }
+            }
+            if (schedules[i].target == "plug") {
+              target = schedules[i].targetId + "/all";
+              conditionToSendWebsocket = false;
+              sendMessage();
+              if (!isOfflineMode) {
+                for (int i = 0; i < SOCKET_COUNT; i++) {
+                  Firebase.RTDB.setBool(&fbdo,
+                                        plugLoc + "/" + schedules[i].targetId +
+                                            "/sockets/" + "socket-" +
+                                            (String)i + "/feedback",
+                                        false);
+                }
+              } else {
+                Serial.println("GLOBAL: Can't send data to Firebase.");
+                Serial.println("GLOBAL: Reason => Offline Mode.");
+              }
+            }
           }
         }
         if (schedules[i].active == true) {
@@ -352,6 +446,37 @@ void loop() {
                 interval.moreSubActive = true;
                 schedules.remove(i);
                 schedules.addAtIndex(i, interval);
+                if (schedules[i].target == "lamp") {
+                  target = schedules[i].targetId;
+                  conditionToSendWebsocket = true;
+                  sendMessage();
+                  if (!isOfflineMode) {
+                    Firebase.RTDB.setBool(
+                        &fbdo,
+                        lampLoc + "/" + schedules[i].targetId + "/condition",
+                        true);
+                  } else {
+                    Serial.println("GLOBAL: Can't send data to Firebase.");
+                    Serial.println("GLOBAL: Reason => Offline Mode.");
+                  }
+                }
+                if (schedules[i].target == "plug") {
+                  target = schedules[i].targetId + "/all";
+                  conditionToSendWebsocket = true;
+                  sendMessage();
+                  if (!isOfflineMode) {
+                    for (int i = 0; i < SOCKET_COUNT; i++) {
+                      Firebase.RTDB.setBool(
+                          &fbdo,
+                          plugLoc + "/" + schedules[i].targetId + "/sockets/" +
+                              "socket-" + (String)i + "/feedback",
+                          true);
+                    }
+                  } else {
+                    Serial.println("GLOBAL: Can't send data to Firebase.");
+                    Serial.println("GLOBAL: Reason => Offline Mode.");
+                  }
+                }
               }
             } else {
               Serial.println("Not in ON Millis");
@@ -373,6 +498,37 @@ void loop() {
                 interval.moreSubActive = true;
                 schedules.remove(i);
                 schedules.addAtIndex(i, interval);
+                if (schedules[i].target == "lamp") {
+                  target = schedules[i].targetId;
+                  conditionToSendWebsocket = false;
+                  sendMessage();
+                  if (!isOfflineMode) {
+                    Firebase.RTDB.setBool(
+                        &fbdo,
+                        lampLoc + "/" + schedules[i].targetId + "/condition",
+                        false);
+                  } else {
+                    Serial.println("GLOBAL: Can't send data to Firebase.");
+                    Serial.println("GLOBAL: Reason => Offline Mode.");
+                  }
+                }
+                if (schedules[i].target == "plug") {
+                  target = schedules[i].targetId + "/all";
+                  conditionToSendWebsocket = false;
+                  sendMessage();
+                  if (!isOfflineMode) {
+                    for (int i = 0; i < SOCKET_COUNT; i++) {
+                      Firebase.RTDB.setBool(
+                          &fbdo,
+                          plugLoc + "/" + schedules[i].targetId + "/sockets/" +
+                              "socket-" + (String)i + "/feedback",
+                          false);
+                    }
+                  } else {
+                    Serial.println("GLOBAL: Can't send data to Firebase.");
+                    Serial.println("GLOBAL: Reason => Offline Mode.");
+                  }
+                }
               }
             } else {
               Serial.println("Not in OFF Millis");
@@ -395,6 +551,36 @@ void loop() {
             delaySchedule.active = false;
             schedules.remove(i);
             schedules.addAtIndex(i, delaySchedule);
+            if (schedules[i].target == "lamp") {
+              target = schedules[i].targetId;
+              conditionToSendWebsocket = false;
+              sendMessage();
+              if (!isOfflineMode) {
+                Firebase.RTDB.setBool(
+                    &fbdo, lampLoc + "/" + schedules[i].targetId + "/condition",
+                    false);
+              } else {
+                Serial.println("GLOBAL: Can't send data to Firebase.");
+                Serial.println("GLOBAL: Reason => Offline Mode.");
+              }
+            }
+            if (schedules[i].target == "plug") {
+              target = schedules[i].targetId + "/all";
+              conditionToSendWebsocket = false;
+              sendMessage();
+              if (!isOfflineMode) {
+                for (int i = 0; i < SOCKET_COUNT; i++) {
+                  Firebase.RTDB.setBool(&fbdo,
+                                        plugLoc + "/" + schedules[i].targetId +
+                                            "/sockets/" + "socket-" +
+                                            (String)i + "/feedback",
+                                        false);
+                }
+              } else {
+                Serial.println("GLOBAL: Can't send data to Firebase.");
+                Serial.println("GLOBAL: Reason => Offline Mode.");
+              }
+            }
           }
         }
       }
@@ -413,18 +599,33 @@ void loop() {
           if (currentData == "true") {
             target = "lamp-" + (String)i;
             conditionToSendWebsocket = true;
+            bool delayAble = true;
             sendMessage();
             for (int i = 0; i < schedules.getSize(); i++) {
               if (schedules[i].trigger == "time" &&
-                  schedules[i].timeMode == "delay" &&
+                  (schedules[i].timeMode == "timeBased" ||
+                   schedules[i].timeMode == "interval") &&
                   schedules[i].targetId == target) {
-                schedule currSchedule = schedules[i];
-                currSchedule.active = true;
-                currSchedule.prevMillisOn = millis();
-                schedules.remove(i);
-                schedules.addAtIndex(i, currSchedule);
-                Serial.println("GLOBAL: Delay Schedule Start!");
+                delayAble = false;
+                break;
               }
+            }
+            if (delayAble) {
+              for (int i = 0; i < schedules.getSize(); i++) {
+                if (schedules[i].trigger == "time" &&
+                    schedules[i].timeMode == "delay" &&
+                    schedules[i].targetId == target) {
+                  schedule currSchedule = schedules[i];
+                  currSchedule.active = true;
+                  currSchedule.prevMillisOn = millis();
+                  schedules.remove(i);
+                  schedules.addAtIndex(i, currSchedule);
+                  Serial.println("GLOBAL: Delay Schedule Start!");
+                }
+              }
+            } else {
+              Serial.println("This device contain schedule other than delay");
+              Serial.println("Delay won't be applied...");
             }
             Serial.println("GLOBAL: Lampu " + (String)i + " menyala!");
           } else {
@@ -456,12 +657,50 @@ void loop() {
                 target = "plug-" + (String)i + "/socket-" + (String)j;
                 conditionToSendWebsocket = true;
                 sendMessage();
+                bool delayAble = true;
+                for (int i = 0; i < schedules.getSize(); i++) {
+                  if (schedules[i].trigger == "time" &&
+                      (schedules[i].timeMode == "timeBased" ||
+                       schedules[i].timeMode == "interval") &&
+                      schedules[i].targetId == target) {
+                    delayAble = false;
+                    break;
+                  }
+                }
+                if (delayAble) {
+                  for (int i = 0; i < schedules.getSize(); i++) {
+                    if (schedules[i].trigger == "time" &&
+                        schedules[i].timeMode == "delay" &&
+                        schedules[i].targetId == target) {
+                      schedule currSchedule = schedules[i];
+                      currSchedule.active = true;
+                      currSchedule.prevMillisOn = millis();
+                      schedules.remove(i);
+                      schedules.addAtIndex(i, currSchedule);
+                      Serial.println("GLOBAL: Delay Schedule Start!");
+                    }
+                  }
+                } else {
+                  Serial.println(
+                      "This device contain schedule other than delay");
+                  Serial.println("Delay won't be applied...");
+                }
                 Serial.println("GLOBAL: Stopkontak " + (String)i +
                                " => Socket " + (String)j + " menyala!");
               } else {
                 target = "plug-" + (String)i + "/socket-" + (String)j;
                 conditionToSendWebsocket = false;
                 sendMessage();
+                for (int i = 0; i < schedules.getSize(); i++) {
+                  if (schedules[i].trigger == "time" &&
+                      schedules[i].timeMode == "delay" &&
+                      schedules[i].targetId == neck) {
+                    schedule currSchedule = schedules[i];
+                    currSchedule.active = false;
+                    schedules.remove(i);
+                    schedules.addAtIndex(i, currSchedule);
+                  }
+                }
                 Serial.println("GLOBAL: Stopkontak " + (String)i +
                                " => Socket " + (String)j + " mati!");
               }
