@@ -4,5 +4,6 @@
 #include <Arduino.h>
 
 void SYSTEM_init();
+void SYSTEM_firstRunWizard();
 
 #endif
