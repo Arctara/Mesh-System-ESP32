@@ -2,6 +2,7 @@
 #define FIREBASE_CMP
 
 #include <Firebase_ESP_Client.h>
+#include <List.hpp>
 
 #include "addons/RTDBHelper.h"
 #include "addons/TokenHelper.h"
@@ -43,5 +44,9 @@ void FIREBASE_getSchedule();
 bool FIREBASE_isTokenExpired();
 
 void FIREBASE_printTokenExpiredMessage();
+void FIREBASE_printOfflineMessage();
+
+void FIREBASE_turnLamp(String lampId, bool condition);
+void FIREBASE_turnPlug(String plugId, bool condition);
 
 #endif
