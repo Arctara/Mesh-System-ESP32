@@ -5,5 +5,6 @@
 
 void SYSTEM_init();
 void SYSTEM_firstRunWizard();
+void SYSTEM_restart();
 
 #endif
