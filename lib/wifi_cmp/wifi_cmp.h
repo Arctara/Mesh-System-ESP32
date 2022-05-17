@@ -10,4 +10,10 @@
 #define AP_DISCOVERABLE 0
 #define AP_MAX_CONNECTION 10
 
+void WIFI_initStation(String ssid, String pass);
+bool WIFI_isOfflineMode();
+void WIFI_printOfflineMessage();
+void WIFI_printStationIP();
+void WIFI_initAP();
+
 #endif
