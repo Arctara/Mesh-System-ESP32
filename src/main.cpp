@@ -23,10 +23,6 @@
 #include "websocket_cmp.h"
 #include "wifi_cmp.h"
 
-void initWiFiFile();
-void initMainFile();
-
-//* VOID SETUP
 void setup() {
   SYSTEM_init();
   TIME_init();
@@ -60,7 +56,6 @@ void setup() {
   DISPLAY_printQRCode();
 }
 
-//* VOID LOOP
 void loop() {
   WS_loop();
 
@@ -513,37 +508,5 @@ void loop() {
       }
       FIREBASE_getSchedule();
     }
-  }
-}
-
-void initWiFiFile() {
-  File file = SPIFFS.open("/wifi_cred.json", FILE_WRITE);
-  if (!file) {
-    Serial.println("- failed to open file for writing");
-    return;
-  }
-
-  String message =
-      "{\"ssid\": \"ZTE_2.4G_bcr2p4\", \"pass\": \"tokinyong_2Sm2HVMq\"}";
-  if (file.print(message)) {
-    Serial.println("- File Written");
-  } else {
-    Serial.println("- Write Failed");
-  }
-}
-
-void initMainFile() {
-  File file = SPIFFS.open("/main.json", FILE_WRITE);
-  if (!file) {
-    Serial.println("- Failed to open file for writing");
-    return;
-  }
-
-  String message = "{\"lamps\": {}, \"plugs\": {}, \"sensors\": {}}";
-
-  if (file.print(message)) {
-    Serial.println("- File Written");
-  } else {
-    Serial.println("- Write Failed");
   }
 }
