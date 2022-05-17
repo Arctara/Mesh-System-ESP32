@@ -12,6 +12,22 @@ void SPIFFS_init() {
   }
 }
 
+void SPIFFS_initWiFiFile() {
+  File file = SPIFFS.open("/wifi_cred.json", FILE_WRITE);
+  if (!file) {
+    Serial.println("- failed to open file for writing");
+    return;
+  }
+
+  String message =
+      "{\"ssid\": \"ZTE_2.4G_bcr2p4\", \"pass\": \"tokinyong_2Sm2HVMq\"}";
+  if (file.print(message)) {
+    Serial.println("- File Written");
+  } else {
+    Serial.println("- Write Failed");
+  }
+}
+
 void SPIFFS_getWiFiCred() {
   //* WiFi Setup Configuration
   String wifi_buffer;
