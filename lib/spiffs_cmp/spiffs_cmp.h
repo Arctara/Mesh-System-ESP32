@@ -8,5 +8,6 @@ extern String wifi_pass;
 
 void SPIFFS_init();
 void SPIFFS_getWiFiCred();
+void SPIFFS_setWiFiCred(String ssid, String pass);
 
 #endif
