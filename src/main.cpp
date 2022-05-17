@@ -59,19 +59,15 @@ void setup() {
 void loop() {
   WS_loop();
 
-  DateTime now = TIME_now();
-  if (Firebase.isTokenExpired() == true) {
-    Serial.println("Firebase Token Expired");
-    Serial.println("Restarting system to get new token...");
-    ESP.restart();
+  if (FIREBASE_isTokenExpired()) {
+    FIREBASE_printTokenExpiredMessage();
+    SYSTEM_restart();
   }
 
-  if (millis() - prevMillis >= 5000) {
-    prevMillis = millis();
-
-    Serial.println("================================================");
-    Serial.println(String(now.hour()) + " : " + String(now.minute()));
-    Serial.println("================================================");
+  DateTime now = TIME_now();
+  if (TIME_tick(5000)) {
+    TIME_update();
+    TIME_printClock();
 
     for (int i = 0; i < schedules.getSize(); i++) {
       if (schedules[i].trigger == "time" &&
