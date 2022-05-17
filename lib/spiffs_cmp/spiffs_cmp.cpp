@@ -36,3 +36,24 @@ void SPIFFS_getWiFiCred() {
   Serial.println(wifi_ssid);
   Serial.println(wifi_pass);
 }
+
+void SPIFFS_setWiFiCred(String ssid, String pass) {
+  File write = SPIFFS.open("/wifi_cred.json", FILE_WRITE);
+
+  if (!write) {
+    Serial.println("Error Open File 1");
+    return;
+  }
+
+  String dataToWrite =
+      "{\"ssid\": \"" + ssid + "\", \"pass\": \"" + pass + "\"}";
+
+  if (write.print(dataToWrite)) {
+    Serial.println("SPIFFS: Write Success");
+  } else {
+    Serial.println("SPIFFS: Write Failed");
+  }
+
+  write.close();
+  ESP.restart();
+}
