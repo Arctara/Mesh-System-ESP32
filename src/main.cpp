@@ -18,6 +18,7 @@
 //$ Firebase Addons
 #include "addons/RTDBHelper.h"
 #include "addons/TokenHelper.h"
+#include "system_cmp.h"
 
 //$ ESP32 Pinout
 #define LED1_PIN 12
@@ -152,7 +153,7 @@ void getSchedulesData();
 
 //* VOID SETUP
 void setup() {
-  Serial.begin(115200);
+  SYSTEM_init();
 
   if (!rtc.begin()) {
     Serial.println("GLOBAL: RTC Not Connected");
