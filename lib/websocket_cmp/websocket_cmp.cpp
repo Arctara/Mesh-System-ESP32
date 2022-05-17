@@ -75,7 +75,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
 
           Serial.println("    ==> " + socket + " = " + condition);
 
-          if (WIFI_isOfflineMode()) {
+          if (!WIFI_isOfflineMode()) {
             Firebase.RTDB.setBool(
                 &fbdo,
                 plugLoc + "/" + from + "/sockets/" + socket + "/feedback",
@@ -126,7 +126,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     target = schedules[i].targetId;
                     conditionToSendWebsocket = true;
                     WS_sendMessage();
-                    if (WIFI_isOfflineMode()) {
+                    if (!WIFI_isOfflineMode()) {
                       Firebase.RTDB.setBool(
                           &fbdo,
                           lampLoc + "/" + schedules[i].targetId + "/condition",
@@ -140,7 +140,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     target = schedules[i].targetId + "/all";
                     conditionToSendWebsocket = true;
                     WS_sendMessage();
-                    if (WIFI_isOfflineMode()) {
+                    if (!WIFI_isOfflineMode()) {
                       for (int i = 0; i < SOCKET_COUNT; i++) {
                         Firebase.RTDB.setBool(&fbdo,
                                               plugLoc + "/" +
@@ -159,7 +159,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     target = schedules[i].targetId;
                     conditionToSendWebsocket = false;
                     WS_sendMessage();
-                    if (WIFI_isOfflineMode()) {
+                    if (!WIFI_isOfflineMode()) {
                       Firebase.RTDB.setBool(
                           &fbdo,
                           lampLoc + "/" + schedules[i].targetId + "/condition",
@@ -173,7 +173,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     target = schedules[i].targetId + "/all";
                     conditionToSendWebsocket = false;
                     WS_sendMessage();
-                    if (WIFI_isOfflineMode()) {
+                    if (!WIFI_isOfflineMode()) {
                       for (int i = 0; i < SOCKET_COUNT; i++) {
                         Firebase.RTDB.setBool(&fbdo,
                                               plugLoc + "/" +
@@ -205,7 +205,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     target = schedules[i].targetId;
                     conditionToSendWebsocket = true;
                     WS_sendMessage();
-                    if (WIFI_isOfflineMode()) {
+                    if (!WIFI_isOfflineMode()) {
                       Firebase.RTDB.setBool(
                           &fbdo,
                           lampLoc + "/" + schedules[i].targetId + "/condition",
@@ -219,7 +219,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     target = schedules[i].targetId + "/all";
                     conditionToSendWebsocket = true;
                     WS_sendMessage();
-                    if (WIFI_isOfflineMode()) {
+                    if (!WIFI_isOfflineMode()) {
                       for (int i = 0; i < SOCKET_COUNT; i++) {
                         Firebase.RTDB.setBool(&fbdo,
                                               plugLoc + "/" +
@@ -238,7 +238,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     target = schedules[i].targetId;
                     conditionToSendWebsocket = false;
                     WS_sendMessage();
-                    if (WIFI_isOfflineMode()) {
+                    if (!WIFI_isOfflineMode()) {
                       Firebase.RTDB.setBool(
                           &fbdo,
                           lampLoc + "/" + schedules[i].targetId + "/condition",
@@ -252,7 +252,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     target = schedules[i].targetId + "/all";
                     conditionToSendWebsocket = false;
                     WS_sendMessage();
-                    if (WIFI_isOfflineMode()) {
+                    if (!WIFI_isOfflineMode()) {
                       for (int i = 0; i < SOCKET_COUNT; i++) {
                         Firebase.RTDB.setBool(&fbdo,
                                               plugLoc + "/" +
@@ -290,7 +290,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     target = schedules[i].targetId;
                     conditionToSendWebsocket = true;
                     WS_sendMessage();
-                    if (WIFI_isOfflineMode()) {
+                    if (!WIFI_isOfflineMode()) {
                       Firebase.RTDB.setBool(
                           &fbdo,
                           lampLoc + "/" + schedules[i].targetId + "/condition",
@@ -304,7 +304,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     target = schedules[i].targetId + "/all";
                     conditionToSendWebsocket = true;
                     WS_sendMessage();
-                    if (WIFI_isOfflineMode()) {
+                    if (!WIFI_isOfflineMode()) {
                       for (int i = 0; i < SOCKET_COUNT; i++) {
                         Firebase.RTDB.setBool(&fbdo,
                                               plugLoc + "/" +
@@ -323,7 +323,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     target = schedules[i].targetId;
                     conditionToSendWebsocket = false;
                     WS_sendMessage();
-                    if (WIFI_isOfflineMode()) {
+                    if (!WIFI_isOfflineMode()) {
                       Firebase.RTDB.setBool(
                           &fbdo,
                           lampLoc + "/" + schedules[i].targetId + "/condition",
@@ -337,7 +337,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     target = schedules[i].targetId + "/all";
                     conditionToSendWebsocket = false;
                     WS_sendMessage();
-                    if (WIFI_isOfflineMode()) {
+                    if (!WIFI_isOfflineMode()) {
                       for (int i = 0; i < SOCKET_COUNT; i++) {
                         Firebase.RTDB.setBool(&fbdo,
                                               plugLoc + "/" +
@@ -360,7 +360,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
 
           Serial.println("    ==> " + data);
 
-          if (WIFI_isOfflineMode()) {
+          if (!WIFI_isOfflineMode()) {
             Firebase.RTDB.setString(
                 &fbdo, sensorLoc + "/sensor-" + (String)i + "/sensorType",
                 sensorType);
@@ -387,4 +387,10 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
       }
     }
   }
+}
+
+void WS_turn(String device, bool condition) {
+  target = device;
+  conditionToSendWebsocket = condition;
+  WS_sendMessage();
 }
