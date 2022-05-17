@@ -6,4 +6,6 @@
 void TIME_init();
 DateTime TIME_now();
 
+extern unsigned long prevMillis;
+
 #endif
