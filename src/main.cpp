@@ -75,9 +75,6 @@ DynamicJsonDocument wifi_cred(256);
 String wifi_ssid;
 String wifi_pass;
 
-// DynamicJsonDocument main_data(1024);
-String main_buffer;
-
 //* WebSocket Configuration
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -137,7 +134,6 @@ streamData receivedDataFirebase;
 String target;
 boolean conditionToSendWebsocket;
 boolean isOfflineMode = false;
-char lampCounter, plugCounter, sensorCounter;
 
 //* Global Function Declaration
 String getValue(String data, char separator, int index);
@@ -152,7 +148,6 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
 void initWiFiFile();
 void initMainFile();
 void getWiFiCredFromSPIFFS();
-void getMainDataFromSPIFFS();
 void getSchedulesData();
 
 //* VOID SETUP
@@ -161,15 +156,7 @@ void setup() {
 
   if (!rtc.begin()) {
     Serial.println("GLOBAL: RTC Not Connected");
-    // Serial.flush();
-
-    // while (1) delay(10);
   }
-
-  // if (rtc.lostPower()) {
-  // Serial.println("RTC Oscillator is dead.");
-  // rtc.adjust(DateTime("2022-05-16T10:15:20"));
-  // }
 
   EEPROM.begin(EEPROM_SIZE);
 
@@ -197,7 +184,6 @@ void setup() {
   }
 
   getWiFiCredFromSPIFFS();
-  getMainDataFromSPIFFS();
 
   WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
   Serial.println();
@@ -1219,21 +1205,6 @@ void getWiFiCredFromSPIFFS() {
 
   Serial.println(wifi_ssid);
   Serial.println(wifi_pass);
-}
-
-void getMainDataFromSPIFFS() {
-  File file = SPIFFS.open("/main.json");
-
-  if (!file) {
-    Serial.println("SPIFFS: Error Open File");
-    return;
-  }
-
-  while (file.available()) {
-    main_buffer += file.readString();
-  }
-
-  // deserializeJson(main_data, main_buffer);
 }
 
 void getSchedulesData() {
