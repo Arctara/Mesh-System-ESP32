@@ -79,3 +79,5 @@ void FIREBASE_getSchedule() {
     Serial.println("GLOBAL: No Schedule.");
   }
 }
+
+bool FIREBASE_isTokenExpired() { return Firebase.isTokenExpired(); }

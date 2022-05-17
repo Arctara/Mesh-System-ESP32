@@ -40,4 +40,6 @@ void FIREBASE_initStream();
 void FIREBASE_initDeviceData();
 void FIREBASE_getSchedule();
 
+bool FIREBASE_isTokenExpired();
+
 #endif
