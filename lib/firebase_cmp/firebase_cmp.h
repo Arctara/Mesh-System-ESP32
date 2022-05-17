@@ -42,4 +42,6 @@ void FIREBASE_getSchedule();
 
 bool FIREBASE_isTokenExpired();
 
+void FIREBASE_printTokenExpiredMessage();
+
 #endif

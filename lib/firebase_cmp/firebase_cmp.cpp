@@ -81,3 +81,8 @@ void FIREBASE_getSchedule() {
 }
 
 bool FIREBASE_isTokenExpired() { return Firebase.isTokenExpired(); }
+
+void FIREBASE_printTokenExpiredMessage() {
+  Serial.println("Firebase Token Expired");
+  Serial.println("Restarting system to get new token...");
+}
