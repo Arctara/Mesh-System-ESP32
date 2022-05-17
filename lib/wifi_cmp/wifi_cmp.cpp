@@ -35,3 +35,8 @@ void WIFI_initAP() {
   WiFi.softAPConfig(IP_ADDRESS, GATEWAY, NETMASK);
   WiFi.softAP(AP_SSID, AP_PASS, AP_CHANNEL, AP_DISCOVERABLE, AP_MAX_CONNECTION);
 }
+
+void WIFI_printAPIP() {
+  Serial.print("WiFi AP: IP Address Access Point: ");
+  Serial.println(WiFi.softAPIP());
+}

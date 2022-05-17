@@ -15,5 +15,6 @@ bool WIFI_isOfflineMode();
 void WIFI_printOfflineMessage();
 void WIFI_printStationIP();
 void WIFI_initAP();
+void WIFI_printAPIP();
 
 #endif
