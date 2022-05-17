@@ -8,17 +8,24 @@
 #include <RTClib.h>
 #include <SPI.h>
 #include <SPIFFS.h>
-#include <SSD1306.h>
 #include <WiFi.h>
 #include <Wire.h>
-#include <qrcode.h>
 
 #include <List.hpp>
+
+#include "display_cmp.h"
+#include "eeprom_cmp.h"
+#include "firebase_cmp.h"
+#include "schedule_cmp.h"
+#include "spiffs_cmp.h"
+#include "system_cmp.h"
+#include "time_cmp.h"
+#include "websocket_cmp.h"
+#include "wifi_cmp.h"
 
 //$ Firebase Addons
 #include "addons/RTDBHelper.h"
 #include "addons/TokenHelper.h"
-#include "system_cmp.h"
 
 //$ ESP32 Pinout
 #define LED1_PIN 12
@@ -26,13 +33,6 @@
 #define LED3_PIN 14
 #define SCL_PIN 21
 #define SDA_PIN 22
-
-//$ Access Point Configuration
-#define AP_SSID "ALiVe_AP"
-#define AP_PASS "LeTS_ALiVe"
-#define AP_CHANNEL 1
-#define AP_DISCOVERABLE 0
-#define AP_MAX_CONNECTION 10
 
 //$ Firebase Address
 #define API_KEY "AIzaSyBmp6mQthJY_3AZcA-PF0wtMPkm-SgDgEo"
@@ -43,19 +43,10 @@
 #define USER_PASSWORD \
   "V2hhdCBhcmUgeW91IGxvb2tpbmcgZm9yIGJ1ZGR5PwotIE1lcnphIEJvbGl2YXI="
 
-//$ Define EEPROM Size
-#define EEPROM_SIZE 512
-
-//$ Config Address Saved in EEPROM
-#define HAS_INIT 0
-
 #define LAMP_COUNT 255
 #define PLUG_COUNT 255
 #define SOCKET_COUNT 5
 #define SENSOR_COUNT 255
-
-SSD1306 display(0x3C, 21, 22);
-QRcode qrcode(&display);
 
 //* Firebase Data Configuration
 FirebaseData stream;
@@ -81,7 +72,6 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
 //* RTC Initialization
-RTC_DS3231 rtc;
 unsigned long prevMillis = 0;
 
 //* Firebase Variable
@@ -155,34 +145,18 @@ void getSchedulesData();
 void setup() {
   SYSTEM_init();
 
-  if (!rtc.begin()) {
-    Serial.println("GLOBAL: RTC Not Connected");
-  }
+  TIME_init();
 
-  EEPROM.begin(EEPROM_SIZE);
+  EEPROM_init();
 
-  display.init();
-  display.write("Hello!");
-  display.display();
-
-  qrcode.init();
-
-  char hasInit = EEPROM.read(HAS_INIT);
+  DISPLAY_init();
 
   if (!SPIFFS.begin(true)) {
     Serial.println("SPIFFS: Error Mount SPIFFS");
     return;
   }
 
-  if (hasInit == 255) {
-    Serial.println("Initializing Everything");
-
-    initWiFiFile();
-    initMainFile();
-
-    EEPROM.write(HAS_INIT, 1);
-    EEPROM.commit();
-  }
+  EEPROM_isFirstRun();
 
   getWiFiCredFromSPIFFS();
 
@@ -209,11 +183,6 @@ void setup() {
 
   WiFi.softAPConfig(IP_ADDRESS, GATEWAY, NETMASK);
   WiFi.softAP(AP_SSID, AP_PASS, AP_CHANNEL, AP_DISCOVERABLE, AP_MAX_CONNECTION);
-
-  String apName = AP_SSID;
-  String apPass = AP_PASS;
-  String stationIP = WiFi.localIP().toString();
-  String apIP = WiFi.softAPIP().toString();
 
   Serial.print("WiFi AP: IP Address Access Point: ");
   Serial.println(WiFi.softAPIP());
@@ -258,19 +227,14 @@ void setup() {
     getSchedulesData();
   }
 
-  display.clear();
-  String dataToSend = "{\"apName\":\"" + apName + "\", \"apPass\": \"" +
-                      apPass + "\", \"serverName\": \"" + WiFi.macAddress() +
-                      "\", \"stationIP\": \"" + stationIP + "\", \"apIP\": \"" +
-                      apIP + "\"}";
-  qrcode.create(dataToSend);
+  DISPLAY_printQRCode();
 }
 
 //* VOID LOOP
 void loop() {
   ws.cleanupClients();
 
-  DateTime now = rtc.now();
+  DateTime now = TIME_now();
   if (Firebase.isTokenExpired() == true) {
     Serial.println("Firebase Token Expired");
     Serial.println("Restarting system to get new token...");
@@ -858,11 +822,11 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
               if (schedules[i].trigger == "light") {
                 if ((schedules[i].activeCondition == "p" &&
                      data == "Pagi/Sore" &&
-                     (rtc.now().hour() >= 5 && rtc.now().hour() <= 12)) ||
+                     (TIME_now().hour() >= 5 && TIME_now().hour() <= 12)) ||
                     (schedules[i].activeCondition == "si" && data == "Siang") ||
                     (schedules[i].activeCondition == "so" &&
                      data == "Pagi/Sore" &&
-                     (rtc.now().hour() >= 15 && rtc.now().hour() <= 18)) ||
+                     (TIME_now().hour() >= 15 && TIME_now().hour() <= 18)) ||
                     (schedules[i].activeCondition == "m" && data == "Malam")) {
                   if (schedules[i].target == "lamp") {
                     target = schedules[i].targetId;
