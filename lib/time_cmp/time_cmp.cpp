@@ -11,3 +11,15 @@ void TIME_init() {
 }
 
 DateTime TIME_now() { return rtc.now(); }
+
+bool TIME_tick(unsigned long duration) {
+  return millis() - prevMillis >= duration;
+}
+
+void TIME_update() { prevMillis = millis(); }
+
+void TIME_printClock() {
+  Serial.println("================================================");
+  Serial.println(String(rtc.now().hour()) + " : " + String(rtc.now().minute()));
+  Serial.println("================================================");
+}
