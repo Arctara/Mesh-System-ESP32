@@ -56,17 +56,6 @@ FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 
-//* Static IP Configuration
-IPAddress IP_ADDRESS(192, 168, 5, 1);
-IPAddress GATEWAY(192, 168, 5, 1);
-IPAddress NETMASK(255, 255, 255, 0);
-
-//* WiFi Setup Configuration
-String wifi_buffer;
-DynamicJsonDocument wifi_cred(256);
-String wifi_ssid;
-String wifi_pass;
-
 //* WebSocket Configuration
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -138,51 +127,28 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
              AwsEventType type, void *arg, uint8_t *data, size_t len);
 void initWiFiFile();
 void initMainFile();
-void getWiFiCredFromSPIFFS();
 void getSchedulesData();
 
 //* VOID SETUP
 void setup() {
   SYSTEM_init();
-
   TIME_init();
-
   EEPROM_init();
-
   DISPLAY_init();
-
-  if (!SPIFFS.begin(true)) {
-    Serial.println("SPIFFS: Error Mount SPIFFS");
-    return;
-  }
+  SPIFFS_init();
 
   EEPROM_isFirstRun();
+  SPIFFS_getWiFiCred();
 
-  getWiFiCredFromSPIFFS();
+  WIFI_initStation(wifi_ssid, wifi_pass);
 
-  WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
-  Serial.println();
-  Serial.print("WiFi Station: Menghubungkan ke WiFi");
-  while (WiFi.status() != WL_CONNECTED && millis() <= 15000) {
-    Serial.print(".");
-    delay(300);
+  if (WIFI_isOfflineMode()) {
+    WIFI_printOfflineMessage();
+  } else {
+    WIFI_printStationIP();
   }
 
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println(
-        "GLOBAL: Tidak dapat terhubung dengan konfigurasi WiFi yang "
-        "diberikan.");
-    Serial.println("GLOBAL: Beralih ke mode Offline.");
-    isOfflineMode = true;
-  } else if (WiFi.status() == WL_CONNECTED) {
-    Serial.print("WiFi Station: Terhubung ke WiFi dengan IP Address: ");
-    Serial.println(WiFi.localIP());
-  }
-
-  Serial.println();
-
-  WiFi.softAPConfig(IP_ADDRESS, GATEWAY, NETMASK);
-  WiFi.softAP(AP_SSID, AP_PASS, AP_CHANNEL, AP_DISCOVERABLE, AP_MAX_CONNECTION);
+  WIFI_initAP();
 
   Serial.print("WiFi AP: IP Address Access Point: ");
   Serial.println(WiFi.softAPIP());
@@ -1149,27 +1115,6 @@ void initMainFile() {
   } else {
     Serial.println("- Write Failed");
   }
-}
-
-void getWiFiCredFromSPIFFS() {
-  File file = SPIFFS.open("/wifi_cred.json");
-
-  if (!file) {
-    Serial.println("SPIFFS: Error Open File 2");
-    return;
-  }
-
-  while (file.available()) {
-    wifi_buffer += file.readString();
-  }
-
-  deserializeJson(wifi_cred, wifi_buffer);
-
-  wifi_ssid = wifi_cred["ssid"].as<String>();
-  wifi_pass = wifi_cred["pass"].as<String>();
-
-  Serial.println(wifi_ssid);
-  Serial.println(wifi_pass);
 }
 
 void getSchedulesData() {
