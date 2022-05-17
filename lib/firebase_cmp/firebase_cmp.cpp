@@ -1,0 +1,81 @@
+#include "firebase_cmp.h"
+
+//* Firebase Data Configuration
+FirebaseData stream;
+FirebaseData fbdo;
+
+//* Firebase User Configuration
+FirebaseAuth auth;
+FirebaseConfig config;
+
+unsigned long sendDataPrevMillis = 0;
+int count = 0;
+volatile boolean firebaseDataChanged = false;
+
+//* Initialize Struct Data
+streamData receivedDataFirebase;
+
+void FIREBASE_init() {
+  config.api_key = API_KEY;
+
+  auth.user.email = USER_EMAIL;
+  auth.user.password = USER_PASSWORD;
+
+  config.database_url = DATABASE_URL;
+
+  config.token_status_callback = tokenStatusCallback;
+
+  Firebase.begin(&config, &auth);
+  Firebase.reconnectWiFi(true);
+}
+
+void FIREBASE_streamCallback(FirebaseStream data) {
+  receivedDataFirebase.streamPath = data.streamPath();
+  receivedDataFirebase.dataPath = data.dataPath();
+  receivedDataFirebase.dataType = data.dataType();
+  receivedDataFirebase.eventType = data.eventType();
+  receivedDataFirebase.data = data.stringData();
+
+  firebaseDataChanged = true;
+}
+
+void FIREBASE_streamTimeoutCallback(bool timeout) {
+  if (timeout) Serial.println("Firebase: Stream timed out, resuming...\n");
+
+  if (!stream.httpConnected())
+    Serial.printf("Firebase: Error code => %d, Error reason => %s\n\n",
+                  stream.httpCode(), stream.errorReason().c_str());
+}
+void FIREBASE_initStream() {
+  if (!Firebase.RTDB.beginStream(&stream, "/"))
+    Serial.printf("Firebase: Stream begin error, %s\n\n",
+                  stream.errorReason().c_str());
+
+  Firebase.RTDB.setStreamCallback(&stream, FIREBASE_streamCallback,
+                                  FIREBASE_streamTimeoutCallback);
+}
+
+void FIREBASE_initDeviceData() {
+  if (Firebase.RTDB.getString(&fbdo,
+                              "homes/" + WiFi.macAddress() + "/macAddress")) {
+    if (fbdo.dataTypeEnum() == fb_esp_rtdb_data_type_string) {
+      Serial.println(fbdo.to<String>());
+      Serial.println();
+    }
+  } else {
+    Serial.println(
+        "GLOBAL: Device isn't registered in Firebase, registering...");
+    Serial.println();
+    Firebase.RTDB.setString(&fbdo, "homes/" + WiFi.macAddress() + "/macAddress",
+                            WiFi.macAddress());
+  }
+}
+
+void FIREBASE_getSchedule() {
+  if (Firebase.RTDB.getString(&fbdo,
+                              "homes/" + WiFi.macAddress() + "/schedules")) {
+    SCHEDULE_build(fbdo.to<String>());
+  } else {
+    Serial.println("GLOBAL: No Schedule.");
+  }
+}
