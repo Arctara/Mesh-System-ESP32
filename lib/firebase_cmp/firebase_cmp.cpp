@@ -76,6 +76,7 @@ void FIREBASE_getSchedule() {
                               "homes/" + WiFi.macAddress() + "/schedules")) {
     SCHEDULE_build(fbdo.to<String>());
   } else {
+    SCHEDULE_removeAll();
     Serial.println("GLOBAL: No Schedule.");
   }
 }
@@ -85,4 +86,31 @@ bool FIREBASE_isTokenExpired() { return Firebase.isTokenExpired(); }
 void FIREBASE_printTokenExpiredMessage() {
   Serial.println("Firebase Token Expired");
   Serial.println("Restarting system to get new token...");
+}
+
+void FIREBASE_printOfflineMessage() {
+  Serial.println("GLOBAL: Can't send data to Firebase.");
+  Serial.println("GLOBAL: Reason => Offline Mode.");
+}
+
+void FIREBASE_turnLamp(String lampId, bool condition) {
+  Serial.println("Turning " + lampId + " on/off");
+  if (Firebase.RTDB.setBool(&fbdo, lampLoc + "/" + lampId + "/condition",
+                            condition)) {
+    Serial.println("Success");
+  } else {
+    Serial.println("fail");
+    Serial.println(fbdo.httpCode());
+    Serial.println(fbdo.errorReason());
+  }
+}
+
+void FIREBASE_turnPlug(String plugId, bool condition) {
+  for (int i = 1; i <= SOCKET_COUNT; i++) {
+    Firebase.RTDB.setBool(&fbdo,
+                          plugLoc + "/" + plugId + "/sockets/" + "socket-" +
+                              (String)i + "/condition",
+                          condition);
+    delay(500);
+  }
 }
