@@ -5,6 +5,8 @@ IPAddress IP_ADDRESS(192, 168, 5, 1);
 IPAddress GATEWAY(192, 168, 5, 1);
 IPAddress NETMASK(255, 255, 255, 0);
 
+bool isOfflineMode = false;
+
 void WIFI_initStation(String ssid, String pass) {
   WiFi.begin(ssid.c_str(), pass.c_str());
   Serial.println();
@@ -15,7 +17,9 @@ void WIFI_initStation(String ssid, String pass) {
   }
 }
 
-bool WIFI_isOfflineMode() { return WiFi.status() != WL_CONNECTED; }
+bool WIFI_isOfflineMode() { return isOfflineMode; }
+
+void WIFI_setOfflineMode(bool newCondition) { isOfflineMode = newCondition; }
 
 void WIFI_printOfflineMessage() {
   Serial.println(
