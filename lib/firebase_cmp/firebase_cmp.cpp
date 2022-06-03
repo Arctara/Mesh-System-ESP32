@@ -46,6 +46,7 @@ void FIREBASE_streamTimeoutCallback(bool timeout) {
     Serial.printf("Firebase: Error code => %d, Error reason => %s\n\n",
                   stream.httpCode(), stream.errorReason().c_str());
 }
+
 void FIREBASE_initStream() {
   if (!Firebase.RTDB.beginStream(&stream, "/"))
     Serial.printf("Firebase: Stream begin error, %s\n\n",
@@ -68,6 +69,15 @@ void FIREBASE_initDeviceData() {
     Serial.println();
     Firebase.RTDB.setString(&fbdo, "homes/" + WiFi.macAddress() + "/macAddress",
                             WiFi.macAddress());
+  }
+  if (Firebase.RTDB.getBool(&fbdo,
+                            "homes/" + WiFi.macAddress() + "/offlineMode")) {
+    if (fbdo.to<bool>() == true) {
+      WIFI_setOfflineMode(true);
+    }
+  } else {
+    Serial.println("GLOBAL: No Internet, Can't connect");
+    Serial.println();
   }
 }
 
@@ -111,6 +121,5 @@ void FIREBASE_turnPlug(String plugId, bool condition) {
                           plugLoc + "/" + plugId + "/sockets/" + "socket-" +
                               (String)i + "/condition",
                           condition);
-    delay(500);
   }
 }
