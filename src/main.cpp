@@ -7,6 +7,7 @@
 #include <RTClib.h>
 #include <SPI.h>
 #include <SPIFFS.h>
+#include <Firebase_ESP_Client.h>
 #include <WiFi.h>
 #include <Wire.h>
 
@@ -20,8 +21,8 @@
 #include "spiffs_cmp.h"
 #include "system_cmp.h"
 #include "time_cmp.h"
-#include "websocket_cmp.h"
 #include "wifi_cmp.h"
+#include "websocket_cmp.h"
 
 void setup() {
   SYSTEM_init();
@@ -35,10 +36,18 @@ void setup() {
 
   WIFI_initStation(wifi_ssid, wifi_pass);
 
+  if (WiFi.status() == WL_CONNECTED) {
+    WIFI_setOfflineMode(false);
+  } else {
+    WIFI_setOfflineMode(true);
+  }
+
   if (WIFI_isOfflineMode()) {
     WIFI_printOfflineMessage();
+    WIFI_setOfflineMode(true);
   } else {
     WIFI_printStationIP();
+    WIFI_setOfflineMode(false);
   }
 
   WIFI_initAP();
@@ -53,16 +62,17 @@ void setup() {
     FIREBASE_getSchedule();
   }
 
+  if (WIFI_isOfflineMode()) {
+    Serial.println("Schedule data from SPIFFS");
+    SCHEDULE_build(SPIFFS_getScheduleData());
+  }
+
   DISPLAY_printQRCode();
+  WS_init();
 }
 
 void loop() {
   WS_loop();
-
-  if (FIREBASE_isTokenExpired()) {
-    FIREBASE_printTokenExpiredMessage();
-    SYSTEM_restart();
-  }
 
   if (TIME_tick(5000)) {
     TIME_update();
@@ -70,7 +80,7 @@ void loop() {
 
     for (int i = 0; i < schedules.getSize(); i++) {
       if (SCHEDULE_isTimeBased(schedules[i])) {
-        schedule timeBased = schedules[i];
+        scheduleData timeBased = schedules[i];
 
         if (SCHEDULE_inTime(timeBased)) {
           if (!SCHEDULE_isActive(timeBased)) {
@@ -88,7 +98,7 @@ void loop() {
         }
       }
       if (SCHEDULE_isInterval(schedules[i])) {
-        schedule interval = schedules[i];
+        scheduleData interval = schedules[i];
 
         if (SCHEDULE_inTime(interval)) {
           if (!SCHEDULE_isActive(interval)) {
@@ -138,7 +148,7 @@ void loop() {
         }
       }
       if (SCHEDULE_isDelay(schedules[i])) {
-        schedule delaySchedule = schedules[i];
+        scheduleData delaySchedule = schedules[i];
 
         if (SCHEDULE_isOutDelayTime(delaySchedule)) {
           if (SCHEDULE_isActive(delaySchedule)) {
@@ -159,74 +169,87 @@ void loop() {
     }
   }
 
-  if (firebaseDataChanged) {
-    firebaseDataChanged = false;
-    String head = getValue(receivedDataFirebase.dataPath, '/', 3);
-    String neck = getValue(receivedDataFirebase.dataPath, '/', 4);
-    String currentData = receivedDataFirebase.data;
+  if (!WIFI_isOfflineMode()) {
+    if (FIREBASE_isTokenExpired()) {
+      FIREBASE_printTokenExpiredMessage();
+      SYSTEM_restart();
+    }
 
-    if (head == "lamps") {
-      for (int i = 1; i <= LAMP_COUNT; i++) {
-        if (neck == "lamp-" + (String)i) {
-          if (currentData == "true") {
-            WS_turn(neck, true);
-            SCHEDULE_checkIfDelayable(neck);
-            Serial.println("GLOBAL: Lampu " + (String)i + " menyala!");
-          } else {
-            WS_turn(neck, false);
-            SCHEDULE_cancelDelay(neck);
-            Serial.println("GLOBAL: Lampu " + (String)i + " mati!");
+    if (firebaseDataChanged) {
+      firebaseDataChanged = false;
+      String head = getValue(receivedDataFirebase.dataPath, '/', 3);
+      String neck = getValue(receivedDataFirebase.dataPath, '/', 4);
+      String currentData = receivedDataFirebase.data;
+
+      if (head == "lamps") {
+        for (int i = 1; i <= LAMP_COUNT; i++) {
+          if (neck == "lamp-" + (String)i) {
+            if (currentData == "true") {
+              WS_turn(neck, true);
+              SCHEDULE_checkIfDelayable(neck);
+              Serial.println("GLOBAL: Lampu " + (String)i + " menyala!");
+            } else {
+              WS_turn(neck, false);
+              SCHEDULE_cancelDelay(neck);
+              Serial.println("GLOBAL: Lampu " + (String)i + " mati!");
+            }
           }
         }
-      }
-    } else if (head == "plugs") {
-      String deviceSubName = getValue(receivedDataFirebase.dataPath, '/', 6);
+      } else if (head == "plugs") {
+        String deviceSubName = getValue(receivedDataFirebase.dataPath, '/', 6);
 
-      for (int i = 1; i <= PLUG_COUNT; i++) {
-        if (neck == "plug-" + (String)i) {
-          for (int j = 1; j <= SOCKET_COUNT; j++) {
-            if (deviceSubName == "socket-" + (String)j) {
-              if (currentData == "true") {
-                WS_turn(neck + "/" + deviceSubName, true);
-                SCHEDULE_checkIfDelayable(neck);
-                Serial.println("GLOBAL: Stopkontak " + (String)i +
-                               " => Socket " + (String)j + " menyala!");
-              } else {
-                WS_turn(neck + "/" + deviceSubName, false);
-                SCHEDULE_cancelDelay(neck);
-                Serial.println("GLOBAL: Stopkontak " + (String)i +
-                               " => Socket " + (String)j + " mati!");
+        for (int i = 1; i <= PLUG_COUNT; i++) {
+          if (neck == "plug-" + (String)i) {
+            for (int j = 1; j <= SOCKET_COUNT; j++) {
+              if (deviceSubName == "socket-" + (String)j) {
+                if (currentData == "true") {
+                  WS_turn(neck + "/" + deviceSubName, true);
+                  SCHEDULE_checkIfDelayable(neck);
+                  Serial.println("GLOBAL: Stopkontak " + (String)i +
+                                 " => Socket " + (String)j + " menyala!");
+                } else {
+                  WS_turn(neck + "/" + deviceSubName, false);
+                  SCHEDULE_cancelDelay(neck);
+                  Serial.println("GLOBAL: Stopkontak " + (String)i +
+                                 " => Socket " + (String)j + " mati!");
+                }
               }
             }
           }
         }
-      }
-    } else if (head == "schedules") {
-      Serial.println(receivedDataFirebase.dataPath);
-      Serial.println();
-      String schedId = getValue(receivedDataFirebase.dataPath, '/', 4);
-      bool newSched = true;
+      } else if (head == "schedules") {
+        Serial.println(receivedDataFirebase.dataPath);
+        Serial.println();
+        String schedId = getValue(receivedDataFirebase.dataPath, '/', 4);
+        bool newSched = true;
 
-      Serial.println("Loop Start");
+        Serial.println("Loop Start");
 
-      for (int i = 0; i < schedules.getSize(); i++) {
-        Serial.println(schedules[i].id);
-        if (schedules[i].id == schedId) {
-          newSched = false;
-          break;
+        for (int i = 0; i < schedules.getSize(); i++) {
+          Serial.println(schedules[i].id);
+          if (schedules[i].id == schedId) {
+            newSched = false;
+            break;
+          }
+        }
+
+        Serial.println("Loop End");
+        Serial.println();
+
+        if (!newSched) {
+          Serial.println("GLOBAL: Old Schedule. '3')");
+        } else {
+          Serial.println("GLOBAL: New Schedule! >_<");
+        }
+
+        FIREBASE_getSchedule();
+      } else if (head == "offlineMode") {
+        if (currentData == "true") {
+          Serial.println("Switching to Offline Mode");
+          Serial.println("Getting schedule data from SPIFFS");
+          SCHEDULE_build(SPIFFS_getScheduleData());
         }
       }
-
-      Serial.println("Loop End");
-      Serial.println();
-
-      if (!newSched) {
-        Serial.println("GLOBAL: Old Schedule. '3')");
-      } else {
-        Serial.println("GLOBAL: New Schedule! >_<");
-      }
-
-      FIREBASE_getSchedule();
     }
   }
 }
