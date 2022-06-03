@@ -1,6 +1,6 @@
 #include "schedule_cmp.h"
 
-List<schedule> schedules;
+List<scheduleData> schedules;
 
 void SCHEDULE_build(String source) {
   schedules.clear();
@@ -13,7 +13,7 @@ void SCHEDULE_build(String source) {
   int i = 0;
   for (JsonVariant v : arrays) {
     if (v.as<String>() != "null") {
-      schedule s;
+      scheduleData s;
       deserializeJson(sD, v.as<String>());
       s.id = String(i);
       s.target = sD["target"].as<String>();
@@ -48,63 +48,63 @@ void SCHEDULE_build(String source) {
   }
 }
 
-void SCHEDULE_update(int index, schedule schedule) {
+void SCHEDULE_update(int index, scheduleData schedule) {
   schedules.remove(index);
   schedules.addAtIndex(index, schedule);
 }
 
-bool SCHEDULE_isTimeBased(schedule schedule) {
+bool SCHEDULE_isTimeBased(scheduleData schedule) {
   return schedule.trigger == "time" && schedule.timeMode == "timeBased";
 }
 
-bool SCHEDULE_isInterval(schedule schedule) {
+bool SCHEDULE_isInterval(scheduleData schedule) {
   return schedule.trigger == "time" && schedule.timeMode == "interval";
 }
 
-bool SCHEDULE_isDelay(schedule schedule) {
+bool SCHEDULE_isDelay(scheduleData schedule) {
   return schedule.trigger == "time" && schedule.timeMode == "delay";
 }
 
-bool SCHEDULE_inTime(schedule schedule) {
+bool SCHEDULE_inTime(scheduleData schedule) {
   return schedule.startHour.toInt() == TIME_now().hour() &&
          schedule.startMinute.toInt() == TIME_now().minute();
 }
 
-bool SCHEDULE_outTime(schedule schedule) {
+bool SCHEDULE_outTime(scheduleData schedule) {
   return schedule.stopHour.toInt() == TIME_now().hour() &&
          schedule.stopMinute.toInt() == TIME_now().minute();
 }
 
-bool SCHEDULE_isActive(schedule schedule) { return schedule.active; }
+bool SCHEDULE_isActive(scheduleData schedule) { return schedule.active; }
 
-bool SCHEDULE_isTargetLamp(schedule schedule) {
+bool SCHEDULE_isTargetLamp(scheduleData schedule) {
   return schedule.target == "lamp";
 }
-bool SCHEDULE_isTargetPlug(schedule schedule) {
+bool SCHEDULE_isTargetPlug(scheduleData schedule) {
   return schedule.target == "plug";
 }
 
-bool SCHEDULE_isSubActive(schedule schedule) { return schedule.subActive; }
+bool SCHEDULE_isSubActive(scheduleData schedule) { return schedule.subActive; }
 
-bool SCHEDULE_isMoreSubActive(schedule schedule) {
+bool SCHEDULE_isMoreSubActive(scheduleData schedule) {
   return schedule.moreSubActive;
 }
 
-bool SCHEDULE_isInLengthOn(schedule schedule) {
+bool SCHEDULE_isInLengthOn(scheduleData schedule) {
   return millis() - schedule.prevMillisOn <=
          (schedule.lengthOn.toInt() * 60000l);
 }
 
-bool SCHEDULE_isInLengthOff(schedule schedule) {
+bool SCHEDULE_isInLengthOff(scheduleData schedule) {
   return millis() - schedule.prevMillisOff <=
          (schedule.lengthOff.toInt() * 60000l);
 }
 
-bool SCHEDULE_isOutDelayTime(schedule schedule) {
+bool SCHEDULE_isOutDelayTime(scheduleData schedule) {
   return millis() - schedule.prevMillisOn >= (schedule.delay.toInt() * 60000l);
 }
 
-void SCHEDULE_turnDevice(schedule schedule, bool condition) {
+void SCHEDULE_turnDevice(scheduleData schedule, bool condition) {
   if (SCHEDULE_isTargetLamp(schedule)) {
     WS_turn(schedule.targetId, condition);
     if (!WIFI_isOfflineMode()) {
@@ -138,7 +138,7 @@ void SCHEDULE_checkIfDelayable(String deviceId) {
     for (int i = 0; i < schedules.getSize(); i++) {
       if (SCHEDULE_isDelay(schedules[i]) && schedules[i].targetId == deviceId) {
         if (!SCHEDULE_isActive(schedules[i])) {
-          schedule currSchedule = schedules[i];
+          scheduleData currSchedule = schedules[i];
           currSchedule.active = true;
           currSchedule.prevMillisOn = millis();
           SCHEDULE_update(i, currSchedule);
@@ -156,7 +156,7 @@ void SCHEDULE_cancelDelay(String deviceId) {
   for (int i = 0; i < schedules.getSize(); i++) {
     if (SCHEDULE_isDelay(schedules[i]) && schedules[i].targetId == deviceId) {
       if (SCHEDULE_isActive(schedules[i])) {
-        schedule currSchedule = schedules[i];
+        scheduleData currSchedule = schedules[i];
         currSchedule.active = false;
         SCHEDULE_update(i, currSchedule);
       }
