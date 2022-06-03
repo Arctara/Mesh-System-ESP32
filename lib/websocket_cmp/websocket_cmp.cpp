@@ -50,6 +50,12 @@ void WS_onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
   }
 }
 
+void WS_turn(String device, bool condition) {
+  target = device;
+  conditionToSendWebsocket = condition;
+  WS_sendMessage();
+}
+
 void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
   AwsFrameInfo *info = (AwsFrameInfo *)arg;
   if (info->final && info->index == 0 && info->len == len &&
@@ -141,13 +147,14 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     conditionToSendWebsocket = true;
                     WS_sendMessage();
                     if (!WIFI_isOfflineMode()) {
-                      for (int i = 0; i < SOCKET_COUNT; i++) {
+                      for (int i = 1; i <= SOCKET_COUNT; i++) {
                         Firebase.RTDB.setBool(&fbdo,
                                               plugLoc + "/" +
                                                   schedules[i].targetId +
                                                   "/sockets/" + "socket-" +
                                                   (String)i + "/feedback",
                                               true);
+                        delay(1000);
                       }
                     } else {
                       Serial.println("GLOBAL: Can't send data to Firebase.");
@@ -174,13 +181,14 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     conditionToSendWebsocket = false;
                     WS_sendMessage();
                     if (!WIFI_isOfflineMode()) {
-                      for (int i = 0; i < SOCKET_COUNT; i++) {
+                      for (int i = 1; i <= SOCKET_COUNT; i++) {
                         Firebase.RTDB.setBool(&fbdo,
                                               plugLoc + "/" +
                                                   schedules[i].targetId +
                                                   "/sockets/" + "socket-" +
                                                   (String)i + "/feedback",
                                               false);
+                        delay(1000);
                       }
                     } else {
                       Serial.println("GLOBAL: Can't send data to Firebase.");
@@ -220,13 +228,14 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     conditionToSendWebsocket = true;
                     WS_sendMessage();
                     if (!WIFI_isOfflineMode()) {
-                      for (int i = 0; i < SOCKET_COUNT; i++) {
+                      for (int i = 1; i <= SOCKET_COUNT; i++) {
                         Firebase.RTDB.setBool(&fbdo,
                                               plugLoc + "/" +
                                                   schedules[i].targetId +
                                                   "/sockets/" + "socket-" +
                                                   (String)i + "/feedback",
                                               true);
+                        delay(1000);
                       }
                     } else {
                       Serial.println("GLOBAL: Can't send data to Firebase.");
@@ -253,13 +262,14 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     conditionToSendWebsocket = false;
                     WS_sendMessage();
                     if (!WIFI_isOfflineMode()) {
-                      for (int i = 0; i < SOCKET_COUNT; i++) {
+                      for (int i = 1; i <= SOCKET_COUNT; i++) {
                         Firebase.RTDB.setBool(&fbdo,
                                               plugLoc + "/" +
                                                   schedules[i].targetId +
                                                   "/sockets/" + "socket-" +
                                                   (String)i + "/feedback",
                                               false);
+                        delay(1000);
                       }
                     } else {
                       Serial.println("GLOBAL: Can't send data to Firebase.");
@@ -305,13 +315,14 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     conditionToSendWebsocket = true;
                     WS_sendMessage();
                     if (!WIFI_isOfflineMode()) {
-                      for (int i = 0; i < SOCKET_COUNT; i++) {
+                      for (int i = 1; i <= SOCKET_COUNT; i++) {
                         Firebase.RTDB.setBool(&fbdo,
                                               plugLoc + "/" +
                                                   schedules[i].targetId +
                                                   "/sockets/" + "socket-" +
                                                   (String)i + "/feedback",
                                               true);
+                        delay(1000);
                       }
                     } else {
                       Serial.println("GLOBAL: Can't send data to Firebase.");
@@ -338,7 +349,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
                     conditionToSendWebsocket = false;
                     WS_sendMessage();
                     if (!WIFI_isOfflineMode()) {
-                      for (int i = 0; i < SOCKET_COUNT; i++) {
+                      for (int i = 1; i <= SOCKET_COUNT; i++) {
                         Firebase.RTDB.setBool(&fbdo,
                                               plugLoc + "/" +
                                                   schedules[i].targetId +
@@ -384,13 +395,175 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
 
           SPIFFS_setWiFiCred(ssid, pass);
         }
+        if (event == "echo") {
+          String message = receivedDataWebsocket["message"].as<String>();
+
+          Serial.println("    Echo Request!");
+          Serial.println("    Message => " + message);
+          ws.textAll(message);
+        }
+        if (event == "requestLampData") {
+          String identity =
+              "{\"from\":\"center\", \"to\": \"mobile\", \"dataType\": "
+              "\"lamp\", \"data\": ";
+          String lampData = SPIFFS_getLampData();
+          String closing = "}";
+          String dataToSend = identity + lampData + closing;
+
+          ws.textAll(dataToSend);
+        }
+        if (event == "requestPlugData") {
+          String identity =
+              "{\"from\":\"center\", \"to\": \"mobile\", \"dataType\": "
+              "\"plug\", \"data\": ";
+          String plugData = SPIFFS_getPlugData();
+          String closing = "}";
+          String dataToSend = identity + plugData + closing;
+
+          ws.textAll(dataToSend);
+        }
+        if (event == "requestScheduleData") {
+          String identity =
+              "{\"from\":\"center\", \"to\": \"mobile\", \"dataType\": "
+              "\"schedule\", \"lampData\": ";
+          String lampData = SPIFFS_getLampData();
+          String middleOne = ", \"plugData\": ";
+          String plugData = SPIFFS_getPlugData();
+          String middleTwo = ", \"sensorData\": ";
+          String sensorData = SPIFFS_getSensorData();
+          String middleThree = ", \"scheduleData\": ";
+          String scheduleData = SPIFFS_getScheduleData();
+          String closing = "}";
+          String dataToSend = identity + lampData + middleOne + plugData +
+                              middleTwo + sensorData + middleThree +
+                              scheduleData + closing;
+
+          ws.textAll(dataToSend);
+        }
+        if (event == "requestMakeScheduleData") {
+          String identity =
+              "{\"from\":\"center\", \"to\": \"mobile\", \"dataType\": "
+              "\"makeSchedule\", \"lampData\": ";
+          String lampData = SPIFFS_getLampData();
+          String middleOne = ", \"plugData\": ";
+          String plugData = SPIFFS_getPlugData();
+          String middleTwo = ", \"sensorData\": ";
+          String sensorData = SPIFFS_getSensorData();
+          String closing = "}";
+          String dataToSend = identity + lampData + middleOne + plugData +
+                              middleTwo + sensorData + closing;
+
+          ws.textAll(dataToSend);
+        }
+        if (event == "requestSensorData") {
+          String identity =
+              "{\"from\":\"center\", \"to\": \"mobile\", \"dataType\": "
+              "\"sensor\", \"data\": ";
+          String plugData = SPIFFS_getSensorData();
+          String closing = "}";
+          String dataToSend = identity + plugData + closing;
+
+          ws.textAll(dataToSend);
+        }
+        if (event == "turnLamp") {
+          DynamicJsonDocument lampsData(1024);
+          String head = receivedDataWebsocket["lampId"].as<String>();
+          String condition = receivedDataWebsocket["condition"].as<String>();
+          bool cond = condition == "true" ? true : false;
+          deserializeJson(lampsData, SPIFFS_getLampData());
+          lampsData[head]["condition"] = condition;
+          String serialize;
+          serializeJson(lampsData, serialize);
+          SPIFFS_setLampData(serialize);
+          WS_turn(head, cond);
+          String identity =
+              "{\"from\":\"center\", \"to\": \"mobile\", \"dataType\": "
+              "\"lamp\", \"data\": ";
+          String lampData = SPIFFS_getLampData();
+          String closing = "}";
+          String dataToSend = identity + lampData + closing;
+
+          ws.textAll(dataToSend);
+        }
+        if (event == "turnPlug") {
+          DynamicJsonDocument plugsData(1024);
+          String head = receivedDataWebsocket["plugId"].as<String>();
+          String neck = receivedDataWebsocket["socket"].as<String>();
+          String condition = receivedDataWebsocket["condition"].as<String>();
+          bool cond = condition == "true" ? true : false;
+          deserializeJson(plugsData, SPIFFS_getPlugData());
+          plugsData[head]["sockets"][neck]["condition"] = condition;
+          String serialize;
+          serializeJson(plugsData, serialize);
+          SPIFFS_setPlugData(serialize);
+          WS_turn(head + "/" + neck, cond);
+          String identity =
+              "{\"from\":\"center\", \"to\": \"mobile\", \"dataType\": "
+              "\"plug\", \"data\": ";
+          String plugData = SPIFFS_getPlugData();
+          String closing = "}";
+          String dataToSend = identity + plugData + closing;
+
+          ws.textAll(dataToSend);
+        }
+        if (event == "addSchedule") {
+          DynamicJsonDocument newSchedule(1024);
+          String scheduleList = SPIFFS_getScheduleData();
+          int strLength = scheduleList.length();
+          String finalData;
+          deserializeJson(newSchedule,
+                          receivedDataWebsocket["schedule"].as<String>());
+          String newScheduleStr;
+          serializeJson(newSchedule, newScheduleStr);
+          if (strLength > 2) {
+            scheduleList.remove(strLength - 1, 1);
+            finalData = scheduleList + ", " + newScheduleStr + "]";
+          } else {
+            finalData = "[" + newScheduleStr + "]";
+          }
+          SPIFFS_setScheduleData(finalData);
+          SCHEDULE_build(SPIFFS_getScheduleData());
+        }
+        if (event == "removeSchedule") {
+          String allList = SPIFFS_getScheduleData();
+          int indexOfLastSchedule = allList.lastIndexOf("}, {");
+          if (indexOfLastSchedule > 0) {
+            allList.remove(indexOfLastSchedule + 1);
+            allList += "]";
+            SPIFFS_setScheduleData(allList);
+            SCHEDULE_build(SPIFFS_getScheduleData());
+          } else {
+            allList = "[]";
+            SPIFFS_setScheduleData(allList);
+            SCHEDULE_build(SPIFFS_getScheduleData());
+          }
+        }
+        if (event == "goOnline") {
+          Serial.println("Switching to Online Mode");
+          WIFI_setOfflineMode(false);
+          Serial.println("Getting Online Schedule");
+          FIREBASE_getSchedule();
+          Serial.println("Finished");
+        }
+        if (event == "requestDeviceData") {
+          String apName = AP_SSID;
+          String apPass = AP_PASS;
+          String stationIP = WiFi.localIP().toString();
+          String apIP = WiFi.softAPIP().toString();
+
+          String identity =
+              "{\"from\":\"center\", \"to\": \"mobile\", \"dataType\": "
+              "\"deviceData\", \"data\": ";
+          String deviceData = "{\"apName\":\"" + apName + "\", \"apPass\": \"" +
+                              apPass + "\", \"serverName\": \"" +
+                              WiFi.macAddress() + "\", \"stationIP\": \"" +
+                              stationIP + "\", \"apIP\": \"" + apIP + "\"}";
+          String closing = "}";
+          String dataToSend = identity + deviceData + closing;
+
+          ws.textAll(dataToSend);
+        }
       }
     }
   }
-}
-
-void WS_turn(String device, bool condition) {
-  target = device;
-  conditionToSendWebsocket = condition;
-  WS_sendMessage();
 }
