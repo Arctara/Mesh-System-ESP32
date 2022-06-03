@@ -8,6 +8,7 @@
 #include "addons/TokenHelper.h"
 #include "global_cmp.h"
 #include "schedule_cmp.h"
+#include "wifi_cmp.h"
 
 //* Firebase Data Configuration
 extern FirebaseData stream;
