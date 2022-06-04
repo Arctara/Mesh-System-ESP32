@@ -12,6 +12,7 @@ void WIFI_initStation(String ssid, String pass) {
   Serial.println();
   Serial.print("WiFi Station: Menghubungkan ke WiFi");
   while (WiFi.status() != WL_CONNECTED && millis() <= 15000) {
+    SYSTEM_blinkLED(BLUE_LED);
     Serial.print(".");
     delay(300);
   }

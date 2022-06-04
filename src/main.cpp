@@ -16,8 +16,8 @@
 #include "display_cmp.h"
 #include "eeprom_cmp.h"
 #include "firebase_cmp.h"
-#include "global_cmp.h"
 #include "schedule_cmp.h"
+#include "global_cmp.h"
 #include "spiffs_cmp.h"
 #include "system_cmp.h"
 #include "time_cmp.h"
@@ -45,9 +45,13 @@ void setup() {
   if (WIFI_isOfflineMode()) {
     WIFI_printOfflineMessage();
     WIFI_setOfflineMode(true);
+    SYSTEM_turnLED(ORANGE_LED, true);
+    SYSTEM_turnLED(BLUE_LED, false);
   } else {
     WIFI_printStationIP();
     WIFI_setOfflineMode(false);
+    SYSTEM_turnLED(ORANGE_LED, false);
+    SYSTEM_turnLED(BLUE_LED, true);
   }
 
   WIFI_initAP();
@@ -166,6 +170,7 @@ void loop() {
           }
         }
       }
+      delay(1);
     }
   }
 
@@ -176,6 +181,7 @@ void loop() {
     }
 
     if (firebaseDataChanged) {
+      SYSTEM_blinkLED(GREEN_LED);
       firebaseDataChanged = false;
       String head = getValue(receivedDataFirebase.dataPath, '/', 3);
       String neck = getValue(receivedDataFirebase.dataPath, '/', 4);
@@ -231,6 +237,7 @@ void loop() {
             newSched = false;
             break;
           }
+          delay(1);
         }
 
         Serial.println("Loop End");
@@ -247,6 +254,8 @@ void loop() {
         if (currentData == "true") {
           Serial.println("Switching to Offline Mode");
           Serial.println("Getting schedule data from SPIFFS");
+          SYSTEM_turnLED(BLUE_LED, false);
+          SYSTEM_turnLED(ORANGE_LED, true);
           SCHEDULE_build(SPIFFS_getScheduleData());
         }
       }

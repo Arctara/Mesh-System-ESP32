@@ -13,6 +13,7 @@
 #include "spiffs_cmp.h"
 #include "time_cmp.h"
 #include "wifi_cmp.h"
+#include "system_cmp.h"
 
 extern String target;
 extern bool conditionToSendWebsocket;

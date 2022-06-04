@@ -2,6 +2,7 @@
 #define WIFI_CMP
 
 #include <WiFi.h>
+#include "system_cmp.h"
 
 //$ Access Point Configuration
 #define AP_SSID "ALiVe_AP"
