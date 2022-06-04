@@ -65,6 +65,18 @@ bool SCHEDULE_isDelay(scheduleData schedule) {
   return schedule.trigger == "time" && schedule.timeMode == "delay";
 }
 
+bool SCHEDULE_isLightSensor(scheduleData schedule) {
+  return schedule.trigger == "light";
+}
+
+bool SCHEDULE_isMovementSensor(scheduleData schedule) {
+  return schedule.trigger == "movement";
+}
+
+bool SCHEDULE_isMoistureSensor(scheduleData schedule) {
+  return schedule.trigger == "moisture";
+}
+
 bool SCHEDULE_inTime(scheduleData schedule) {
   return schedule.startHour.toInt() == TIME_now().hour() &&
          schedule.startMinute.toInt() == TIME_now().minute();
@@ -102,6 +114,26 @@ bool SCHEDULE_isInLengthOff(scheduleData schedule) {
 
 bool SCHEDULE_isOutDelayTime(scheduleData schedule) {
   return millis() - schedule.prevMillisOn >= (schedule.delay.toInt() * 60000l);
+}
+
+bool SCHEDULE_isLightTriggered(scheduleData schedule, String data) {
+  return (schedule.activeCondition == "p" && data == "Pagi/Sore" &&
+          (TIME_now().hour() >= 5 && TIME_now().hour() <= 12)) ||
+         (schedule.activeCondition == "si" && data == "Siang") ||
+         (schedule.activeCondition == "so" && data == "Pagi/Sore" &&
+          (TIME_now().hour() >= 15 && TIME_now().hour() <= 18)) ||
+         (schedule.activeCondition == "m" && data == "Malam");
+}
+
+bool SCHEDULE_isMovementTriggered(scheduleData schedule, String data) {
+  return (schedule.activeCondition == "ag" && data == "Ada Gerakan") ||
+         (schedule.activeCondition == "tag" && data == "Tidak ada gerakan");
+}
+
+bool SCHEDULE_isMoistureTriggered(scheduleData schedule, String data) {
+  return (schedule.activeCondition == "k" && data == "Kering") ||
+         (schedule.activeCondition == "b" && data == "Basah") ||
+         (schedule.activeCondition == "tba" && data == "Terlalu banyak air");
 }
 
 void SCHEDULE_turnDevice(scheduleData schedule, bool condition) {
