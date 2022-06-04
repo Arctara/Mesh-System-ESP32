@@ -5,9 +5,9 @@
 #include <WiFi.h>
 
 //$ ESP32 Pinout
-#define LED1_PIN 12
-#define LED2_PIN 13
-#define LED3_PIN 14
+#define BLUE_LED 12
+#define ORANGE_LED 13
+#define GREEN_LED 14
 #define SCL_PIN 21
 #define SDA_PIN 22
 
