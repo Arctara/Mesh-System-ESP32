@@ -121,49 +121,15 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
               icon = "sun";
             }
 
-            for (int i = 0; i < schedules.getSize(); i++) {
-              scheduleData currentSchedule = schedules[i];
-              if (SCHEDULE_isLightSensor(currentSchedule)) {
-                if (SCHEDULE_isLightTriggered(currentSchedule, data)) {
-                  if (!SCHEDULE_isActive(currentSchedule)) {
-                    currentSchedule.active = true;
-                    SCHEDULE_update(i, currentSchedule);
-                    SCHEDULE_turnDevice(currentSchedule, true);
-                  }
-                } else {
-                  if (SCHEDULE_isActive(currentSchedule)) {
-                    currentSchedule.active = false;
-                    SCHEDULE_update(i, currentSchedule);
-                    SCHEDULE_turnDevice(currentSchedule, false);
-                  }
-                }
-              }
-            }
+            currentLightReading = data;
 
             Serial.println("  > Data from Light Sensor! (LiSn)");
           } else if (sensorType == "movementSensor") {
             icon = "human";
 
-            for (int i = 0; i < schedules.getSize(); i++) {
-              scheduleData currentSchedule = schedules[i];
-              if (SCHEDULE_isMovementSensor(currentSchedule)) {
-                if (SCHEDULE_isMovementTriggered(currentSchedule, data)) {
-                  if (!SCHEDULE_isActive(currentSchedule)) {
-                    currentSchedule.active = true;
-                    SCHEDULE_update(i, currentSchedule);
-                    SCHEDULE_turnDevice(currentSchedule, true);
-                  }
-                } else {
-                  if (SCHEDULE_isActive(currentSchedule)) {
-                    currentSchedule.active = false;
-                    SCHEDULE_update(i, currentSchedule);
-                    SCHEDULE_turnDevice(currentSchedule, false);
-                  }
-                }
-              }
-            }
+            currentMovementReading
 
-            Serial.println("  > Data from Movement Sensor! (MvmSn)");
+                Serial.println("  > Data from Movement Sensor! (MvmSn)");
           } else if (sensorType == "moistureSensor") {
             if (data == "Terlalu banyak air") {
               icon = "wetter";
@@ -173,24 +139,7 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
               icon = "dry";
             }
 
-            for (int i = 0; i < schedules.getSize(); i++) {
-              scheduleData currentSchedule = schedules[i];
-              if (SCHEDULE_isMoistureSensor(currentSchedule)) {
-                if (SCHEDULE_isMoistureTriggered(currentSchedule, data)) {
-                  if (!SCHEDULE_isActive(currentSchedule)) {
-                    currentSchedule.active = true;
-                    SCHEDULE_update(i, currentSchedule);
-                    SCHEDULE_turnDevice(currentSchedule, true);
-                  }
-                } else {
-                  if (SCHEDULE_isActive(currentSchedule)) {
-                    currentSchedule.active = false;
-                    SCHEDULE_update(i, currentSchedule);
-                    SCHEDULE_turnDevice(currentSchedule, false);
-                  }
-                }
-              }
-            }
+            currentMoistureReading = data;
 
             Serial.println("  > Data from Moisture Sensor! (MstSn)");
           }
