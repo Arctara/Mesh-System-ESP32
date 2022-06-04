@@ -35,14 +35,17 @@ void WS_onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
                 AwsEventType type, void *arg, uint8_t *data, size_t len) {
   switch (type) {
     case WS_EVT_CONNECT:
+      SYSTEM_blinkLED(GREEN_LED);
       Serial.printf("Websocket: Websocket client #%u connected from %s\n",
                     client->id(), client->remoteIP().toString().c_str());
       break;
     case WS_EVT_DISCONNECT:
+      SYSTEM_blinkLED(GREEN_LED);
       Serial.printf("Websocket: Websocket client #%u disconnected\n",
                     client->id());
       break;
     case WS_EVT_DATA:
+      SYSTEM_blinkLED(GREEN_LED);
       WS_handleMessage(arg, data, len);
       break;
     default:
@@ -119,81 +122,19 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
             }
 
             for (int i = 0; i < schedules.getSize(); i++) {
-              if (schedules[i].trigger == "light") {
-                if ((schedules[i].activeCondition == "p" &&
-                     data == "Pagi/Sore" &&
-                     (TIME_now().hour() >= 5 && TIME_now().hour() <= 12)) ||
-                    (schedules[i].activeCondition == "si" && data == "Siang") ||
-                    (schedules[i].activeCondition == "so" &&
-                     data == "Pagi/Sore" &&
-                     (TIME_now().hour() >= 15 && TIME_now().hour() <= 18)) ||
-                    (schedules[i].activeCondition == "m" && data == "Malam")) {
-                  if (schedules[i].target == "lamp") {
-                    target = schedules[i].targetId;
-                    conditionToSendWebsocket = true;
-                    WS_sendMessage();
-                    if (!WIFI_isOfflineMode()) {
-                      Firebase.RTDB.setBool(
-                          &fbdo,
-                          lampLoc + "/" + schedules[i].targetId + "/condition",
-                          true);
-                    } else {
-                      Serial.println("GLOBAL: Can't send data to Firebase.");
-                      Serial.println("GLOBAL: Reason => Offline Mode.");
-                    }
-                  }
-                  if (schedules[i].target == "plug") {
-                    target = schedules[i].targetId + "/all";
-                    conditionToSendWebsocket = true;
-                    WS_sendMessage();
-                    if (!WIFI_isOfflineMode()) {
-                      for (int i = 1; i <= SOCKET_COUNT; i++) {
-                        Firebase.RTDB.setBool(&fbdo,
-                                              plugLoc + "/" +
-                                                  schedules[i].targetId +
-                                                  "/sockets/" + "socket-" +
-                                                  (String)i + "/feedback",
-                                              true);
-                        delay(1000);
-                      }
-                    } else {
-                      Serial.println("GLOBAL: Can't send data to Firebase.");
-                      Serial.println("GLOBAL: Reason => Offline Mode.");
-                    }
+              scheduleData currentSchedule = schedules[i];
+              if (SCHEDULE_isLightSensor(currentSchedule)) {
+                if (SCHEDULE_isLightTriggered(currentSchedule, data)) {
+                  if (!SCHEDULE_isActive(currentSchedule)) {
+                    currentSchedule.active = true;
+                    SCHEDULE_update(i, currentSchedule);
+                    SCHEDULE_turnDevice(currentSchedule, true);
                   }
                 } else {
-                  if (schedules[i].target == "lamp") {
-                    target = schedules[i].targetId;
-                    conditionToSendWebsocket = false;
-                    WS_sendMessage();
-                    if (!WIFI_isOfflineMode()) {
-                      Firebase.RTDB.setBool(
-                          &fbdo,
-                          lampLoc + "/" + schedules[i].targetId + "/condition",
-                          false);
-                    } else {
-                      Serial.println("GLOBAL: Can't send data to Firebase.");
-                      Serial.println("GLOBAL: Reason => Offline Mode.");
-                    }
-                  }
-                  if (schedules[i].target == "plug") {
-                    target = schedules[i].targetId + "/all";
-                    conditionToSendWebsocket = false;
-                    WS_sendMessage();
-                    if (!WIFI_isOfflineMode()) {
-                      for (int i = 1; i <= SOCKET_COUNT; i++) {
-                        Firebase.RTDB.setBool(&fbdo,
-                                              plugLoc + "/" +
-                                                  schedules[i].targetId +
-                                                  "/sockets/" + "socket-" +
-                                                  (String)i + "/feedback",
-                                              false);
-                        delay(1000);
-                      }
-                    } else {
-                      Serial.println("GLOBAL: Can't send data to Firebase.");
-                      Serial.println("GLOBAL: Reason => Offline Mode.");
-                    }
+                  if (SCHEDULE_isActive(currentSchedule)) {
+                    currentSchedule.active = false;
+                    SCHEDULE_update(i, currentSchedule);
+                    SCHEDULE_turnDevice(currentSchedule, false);
                   }
                 }
               }
@@ -204,77 +145,19 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
             icon = "human";
 
             for (int i = 0; i < schedules.getSize(); i++) {
-              if (schedules[i].trigger == "movement") {
-                if ((schedules[i].activeCondition == "ag" &&
-                     data == "Ada Gerakan") ||
-                    (schedules[i].activeCondition == "tag" &&
-                     data == "Tidak ada gerakan")) {
-                  if (schedules[i].target == "lamp") {
-                    target = schedules[i].targetId;
-                    conditionToSendWebsocket = true;
-                    WS_sendMessage();
-                    if (!WIFI_isOfflineMode()) {
-                      Firebase.RTDB.setBool(
-                          &fbdo,
-                          lampLoc + "/" + schedules[i].targetId + "/condition",
-                          true);
-                    } else {
-                      Serial.println("GLOBAL: Can't send data to Firebase.");
-                      Serial.println("GLOBAL: Reason => Offline Mode.");
-                    }
-                  }
-                  if (schedules[i].target == "plug") {
-                    target = schedules[i].targetId + "/all";
-                    conditionToSendWebsocket = true;
-                    WS_sendMessage();
-                    if (!WIFI_isOfflineMode()) {
-                      for (int i = 1; i <= SOCKET_COUNT; i++) {
-                        Firebase.RTDB.setBool(&fbdo,
-                                              plugLoc + "/" +
-                                                  schedules[i].targetId +
-                                                  "/sockets/" + "socket-" +
-                                                  (String)i + "/feedback",
-                                              true);
-                        delay(1000);
-                      }
-                    } else {
-                      Serial.println("GLOBAL: Can't send data to Firebase.");
-                      Serial.println("GLOBAL: Reason => Offline Mode.");
-                    }
+              scheduleData currentSchedule = schedules[i];
+              if (SCHEDULE_isMovementSensor(currentSchedule)) {
+                if (SCHEDULE_isMovementTriggered(currentSchedule, data)) {
+                  if (!SCHEDULE_isActive(currentSchedule)) {
+                    currentSchedule.active = true;
+                    SCHEDULE_update(i, currentSchedule);
+                    SCHEDULE_turnDevice(currentSchedule, true);
                   }
                 } else {
-                  if (schedules[i].target == "lamp") {
-                    target = schedules[i].targetId;
-                    conditionToSendWebsocket = false;
-                    WS_sendMessage();
-                    if (!WIFI_isOfflineMode()) {
-                      Firebase.RTDB.setBool(
-                          &fbdo,
-                          lampLoc + "/" + schedules[i].targetId + "/condition",
-                          false);
-                    } else {
-                      Serial.println("GLOBAL: Can't send data to Firebase.");
-                      Serial.println("GLOBAL: Reason => Offline Mode.");
-                    }
-                  }
-                  if (schedules[i].target == "plug") {
-                    target = schedules[i].targetId + "/all";
-                    conditionToSendWebsocket = false;
-                    WS_sendMessage();
-                    if (!WIFI_isOfflineMode()) {
-                      for (int i = 1; i <= SOCKET_COUNT; i++) {
-                        Firebase.RTDB.setBool(&fbdo,
-                                              plugLoc + "/" +
-                                                  schedules[i].targetId +
-                                                  "/sockets/" + "socket-" +
-                                                  (String)i + "/feedback",
-                                              false);
-                        delay(1000);
-                      }
-                    } else {
-                      Serial.println("GLOBAL: Can't send data to Firebase.");
-                      Serial.println("GLOBAL: Reason => Offline Mode.");
-                    }
+                  if (SCHEDULE_isActive(currentSchedule)) {
+                    currentSchedule.active = false;
+                    SCHEDULE_update(i, currentSchedule);
+                    SCHEDULE_turnDevice(currentSchedule, false);
                   }
                 }
               }
@@ -291,76 +174,19 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
             }
 
             for (int i = 0; i < schedules.getSize(); i++) {
-              if (schedules[i].trigger == "moisture") {
-                if ((schedules[i].activeCondition == "k" && data == "Kering") ||
-                    (schedules[i].activeCondition == "b" && data == "Basah") ||
-                    (schedules[i].activeCondition == "tba" &&
-                     data == "Terlalu banyak air")) {
-                  if (schedules[i].target == "lamp") {
-                    target = schedules[i].targetId;
-                    conditionToSendWebsocket = true;
-                    WS_sendMessage();
-                    if (!WIFI_isOfflineMode()) {
-                      Firebase.RTDB.setBool(
-                          &fbdo,
-                          lampLoc + "/" + schedules[i].targetId + "/condition",
-                          true);
-                    } else {
-                      Serial.println("GLOBAL: Can't send data to Firebase.");
-                      Serial.println("GLOBAL: Reason => Offline Mode.");
-                    }
-                  }
-                  if (schedules[i].target == "plug") {
-                    target = schedules[i].targetId + "/all";
-                    conditionToSendWebsocket = true;
-                    WS_sendMessage();
-                    if (!WIFI_isOfflineMode()) {
-                      for (int i = 1; i <= SOCKET_COUNT; i++) {
-                        Firebase.RTDB.setBool(&fbdo,
-                                              plugLoc + "/" +
-                                                  schedules[i].targetId +
-                                                  "/sockets/" + "socket-" +
-                                                  (String)i + "/feedback",
-                                              true);
-                        delay(1000);
-                      }
-                    } else {
-                      Serial.println("GLOBAL: Can't send data to Firebase.");
-                      Serial.println("GLOBAL: Reason => Offline Mode.");
-                    }
+              scheduleData currentSchedule = schedules[i];
+              if (SCHEDULE_isMoistureSensor(currentSchedule)) {
+                if (SCHEDULE_isMoistureTriggered(currentSchedule, data)) {
+                  if (!SCHEDULE_isActive(currentSchedule)) {
+                    currentSchedule.active = true;
+                    SCHEDULE_update(i, currentSchedule);
+                    SCHEDULE_turnDevice(currentSchedule, true);
                   }
                 } else {
-                  if (schedules[i].target == "lamp") {
-                    target = schedules[i].targetId;
-                    conditionToSendWebsocket = false;
-                    WS_sendMessage();
-                    if (!WIFI_isOfflineMode()) {
-                      Firebase.RTDB.setBool(
-                          &fbdo,
-                          lampLoc + "/" + schedules[i].targetId + "/condition",
-                          false);
-                    } else {
-                      Serial.println("GLOBAL: Can't send data to Firebase.");
-                      Serial.println("GLOBAL: Reason => Offline Mode.");
-                    }
-                  }
-                  if (schedules[i].target == "plug") {
-                    target = schedules[i].targetId + "/all";
-                    conditionToSendWebsocket = false;
-                    WS_sendMessage();
-                    if (!WIFI_isOfflineMode()) {
-                      for (int i = 1; i <= SOCKET_COUNT; i++) {
-                        Firebase.RTDB.setBool(&fbdo,
-                                              plugLoc + "/" +
-                                                  schedules[i].targetId +
-                                                  "/sockets/" + "socket-" +
-                                                  (String)i + "/feedback",
-                                              false);
-                      }
-                    } else {
-                      Serial.println("GLOBAL: Can't send data to Firebase.");
-                      Serial.println("GLOBAL: Reason => Offline Mode.");
-                    }
+                  if (SCHEDULE_isActive(currentSchedule)) {
+                    currentSchedule.active = false;
+                    SCHEDULE_update(i, currentSchedule);
+                    SCHEDULE_turnDevice(currentSchedule, false);
                   }
                 }
               }
@@ -544,6 +370,8 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
           Serial.println("Getting Online Schedule");
           FIREBASE_getSchedule();
           Serial.println("Finished");
+          SYSTEM_turnLED(ORANGE_LED, false);
+          SYSTEM_turnLED(BLUE_LED, true);
         }
         if (event == "requestDeviceData") {
           String apName = AP_SSID;
