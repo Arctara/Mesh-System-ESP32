@@ -29,6 +29,9 @@
 extern String lampLoc;
 extern String sensorLoc;
 extern String plugLoc;
+extern String currentLightReading;
+extern String currentMovementReading;
+extern String currentMoistureReading;
 
 String getValue(String data, char separator, int index);
 

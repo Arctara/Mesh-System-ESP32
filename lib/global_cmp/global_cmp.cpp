@@ -4,6 +4,10 @@ String lampLoc = "homes/" + WiFi.macAddress() + "/lamps";
 String sensorLoc = "homes/" + WiFi.macAddress() + "/sensors";
 String plugLoc = "homes/" + WiFi.macAddress() + "/plugs";
 
+String currentLightReading = "";
+String currentMovementReading = "";
+String currentMoistureReading = "";
+
 //* Global Function Definition
 String getValue(String data, char separator, int index) {
   int found = 0;
