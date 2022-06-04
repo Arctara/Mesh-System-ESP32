@@ -46,6 +46,9 @@ void SCHEDULE_turnDevice(scheduleData schedule, bool condition);
 bool SCHEDULE_isTimeBased(scheduleData schedule);
 bool SCHEDULE_isInterval(scheduleData schedule);
 bool SCHEDULE_isDelay(scheduleData schedule);
+bool SCHEDULE_isLightSensor(scheduleData schedule);
+bool SCHEDULE_isMovementSensor(scheduleData schedule);
+bool SCHEDULE_isMoistureSensor(scheduleData schedule);
 
 bool SCHEDULE_inTime(scheduleData schedule);
 bool SCHEDULE_outTime(scheduleData schedule);
@@ -62,6 +65,10 @@ bool SCHEDULE_isInLengthOn(scheduleData schedule);
 bool SCHEDULE_isInLengthOff(scheduleData schedule);
 
 bool SCHEDULE_isOutDelayTime(scheduleData schedule);
+
+bool SCHEDULE_isLightTriggered(scheduleData schedule, String data);
+bool SCHEDULE_isMovementTriggered(scheduleData schedule, String data);
+bool SCHEDULE_isMoistureTriggered(scheduleData schedule, String data);
 
 void SCHEDULE_checkIfDelayable(String deviceId);
 void SCHEDULE_cancelDelay(String deviceId);
