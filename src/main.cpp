@@ -170,6 +170,59 @@ void loop() {
           }
         }
       }
+
+      if (SCHEDULE_isLightSensor(schedules[i])) {
+        scheduleData lightSchedule = schedules[i];
+        if (SCHEDULE_isLightTriggered(lightSchedule, currentLightReading)) {
+          if (!SCHEDULE_isActive(lightSchedule)) {
+            lightSchedule.active = true;
+            SCHEDULE_update(i, lightSchedule);
+            SCHEDULE_turnDevice(lightSchedule, true);
+          }
+        } else {
+          if (SCHEDULE_isActive(lightSchedule)) {
+            lightSchedule.active = false;
+            SCHEDULE_update(i, lightSchedule);
+            SCHEDULE_turnDevice(lightSchedule, false);
+          }
+        }
+      }
+
+      if (SCHEDULE_isMovementSensor(schedules[i])) {
+        scheduleData movementSchedule = schedules[i];
+        if (SCHEDULE_isMovementTriggered(movementSchedule,
+                                         currentMovementReading)) {
+          if (!SCHEDULE_isActive(movementSchedule)) {
+            movementSchedule.active = true;
+            SCHEDULE_update(i, movementSchedule);
+            SCHEDULE_turnDevice(movementSchedule, true);
+          }
+        } else {
+          if (SCHEDULE_isActive(movementSchedule)) {
+            movementSchedule.active = false;
+            SCHEDULE_update(i, movementSchedule);
+            SCHEDULE_turnDevice(movementSchedule, false);
+          }
+        }
+      }
+
+      if (SCHEDULE_isMoistureSensor(schedules[i])) {
+        scheduleData moistureSchedule = schedules[i];
+        if (SCHEDULE_isMoistureTriggered(moistureSchedule,
+                                         currentMoistureReading)) {
+          if (!SCHEDULE_isActive(moistureSchedule)) {
+            moistureSchedule.active = true;
+            SCHEDULE_update(i, moistureSchedule);
+            SCHEDULE_turnDevice(moistureSchedule, true);
+          }
+        } else {
+          if (SCHEDULE_isActive(moistureSchedule)) {
+            moistureSchedule.active = false;
+            SCHEDULE_update(i, moistureSchedule);
+            SCHEDULE_turnDevice(moistureSchedule, false);
+          }
+        }
+      }
       delay(1);
     }
   }
