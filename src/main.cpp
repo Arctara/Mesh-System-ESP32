@@ -69,6 +69,8 @@ void setup() {
   if (WIFI_isOfflineMode()) {
     Serial.println("Schedule data from SPIFFS");
     SCHEDULE_build(SPIFFS_getScheduleData());
+    SYSTEM_turnLED(ORANGE_LED, true);
+    SYSTEM_turnLED(BLUE_LED, false);
   }
 
   DISPLAY_printQRCode();
@@ -225,6 +227,7 @@ void loop() {
           if (millis() - prevMovementMillis > interval) {
             Serial.println("No movement detected so far");
             Serial.println("Deactivating Movement Schedule...");
+            interval = 60000;
             movementSchedule.active = false;
             SCHEDULE_update(i, movementSchedule);
             SCHEDULE_turnDevice(movementSchedule, false);
