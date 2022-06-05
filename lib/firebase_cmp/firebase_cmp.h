@@ -48,6 +48,6 @@ void FIREBASE_printTokenExpiredMessage();
 void FIREBASE_printOfflineMessage();
 
 void FIREBASE_turnLamp(String lampId, bool condition);
-void FIREBASE_turnPlug(String plugId, bool condition);
+void FIREBASE_turnPlug(String plugId, String socketId, bool condition);
 
 #endif
