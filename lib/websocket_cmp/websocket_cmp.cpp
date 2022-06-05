@@ -81,13 +81,28 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
 
           bool isActive = receivedDataWebsocket["state"].as<bool>();
 
+          DynamicJsonDocument lampsData(1024);
+          deserializeJson(lampsData, SPIFFS_getLampData());
+          lampsData[from]["feedback"] = isActive;
+          String serialize;
+          serializeJson(lampsData, serialize);
+          SPIFFS_setLampData(serialize);
+
           if (!WIFI_isOfflineMode()) {
             FIREBASE_turnLamp(from, isActive);
           } else {
             FIREBASE_printOfflineMessage();
+            String identity =
+                "{\"from\":\"center\", \"to\": \"mobile\", \"dataType\": "
+                "\"lamp\", \"data\": ";
+            String lampData = SPIFFS_getLampData();
+            String closing = "}";
+            String dataToSend = identity + lampData + closing;
+
+            ws.textAll(dataToSend);
           }
 
-          Serial.println("    ==> " + isActive);
+          Serial.println("    ==> " + (String)isActive);
         }
       }
 
@@ -98,13 +113,30 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
 
           String socket = receivedDataWebsocket["socket"].as<String>();
           bool condition = receivedDataWebsocket["condition"].as<bool>();
+          bool fromButton = receivedDataWebsocket["fromButton"].as<bool>();
 
-          Serial.println("    ==> " + socket + " = " + condition);
+          Serial.println("    ==> " + socket + " = " + (String)condition);
+          Serial.println("    ==> From button = " + (String)fromButton);
+
+          DynamicJsonDocument plugsData(1024);
+          deserializeJson(plugsData, SPIFFS_getPlugData());
+          plugsData[from]["sockets"][socket]["feedback"] = condition;
+          String serialize;
+          serializeJson(plugsData, serialize);
+          SPIFFS_setPlugData(serialize);
 
           if (!WIFI_isOfflineMode()) {
             FIREBASE_turnPlug(from, socket, condition);
           } else {
             FIREBASE_printOfflineMessage();
+            String identity =
+                "{\"from\":\"center\", \"to\": \"mobile\", \"dataType\": "
+                "\"plug\", \"data\": ";
+            String plugData = SPIFFS_getPlugData();
+            String closing = "}";
+            String dataToSend = identity + plugData + closing;
+
+            ws.textAll(dataToSend);
           }
         }
       }
