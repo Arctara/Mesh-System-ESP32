@@ -105,18 +105,16 @@ void FIREBASE_printOfflineMessage() {
 
 void FIREBASE_turnLamp(String lampId, bool condition) {
   Serial.println("Turning " + lampId + " on/off");
-  if (Firebase.RTDB.setBool(&fbdo, lampLoc + "/" + lampId + "/feedback",
-                            condition)) {
-    Serial.println("Success");
-  } else {
-    Serial.println("fail");
-    Serial.println(fbdo.httpCode());
-    Serial.println(fbdo.errorReason());
-  }
+  Firebase.RTDB.setBool(&fbdo, lampLoc + "/" + lampId + "/feedback", condition);
+  Firebase.RTDB.setBool(&fbdo, lampLoc + "/" + lampId + "/condition",
+                        condition);
 }
 
 void FIREBASE_turnPlug(String plugId, String socketId, bool condition) {
   Firebase.RTDB.setBool(
       &fbdo, plugLoc + "/" + plugId + "/sockets/" + socketId + "/feedback",
+      condition);
+  Firebase.RTDB.setBool(
+      &fbdo, plugLoc + "/" + plugId + "/sockets/" + socketId + "/condition",
       condition);
 }
