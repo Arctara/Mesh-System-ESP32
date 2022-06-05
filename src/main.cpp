@@ -207,7 +207,10 @@ void loop() {
         if (movementSchedule.active == true) {
           if (millis() - prevMovementMillis > (interval - 15000ul) &&
               millis() - prevMovementMillis <= interval) {
-            if (currentMovementReading == "Ada Gerakan") {
+            String activeCondition = movementSchedule.activeCondition == "ag"
+                                         ? "Ada Gerakan"
+                                         : "Tidak ada gerakan";
+            if (currentMovementReading == activeCondition) {
               if (!hasExtended) {
                 Serial.println("Movement still detected!");
                 Serial.println("Extending time...");
