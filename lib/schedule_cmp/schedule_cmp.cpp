@@ -140,19 +140,9 @@ bool SCHEDULE_isMoistureTriggered(scheduleData schedule, String data) {
 void SCHEDULE_turnDevice(scheduleData schedule, bool condition) {
   if (SCHEDULE_isTargetLamp(schedule)) {
     WS_turn(schedule.targetId, condition);
-    if (!WIFI_isOfflineMode()) {
-      FIREBASE_turnLamp(schedule.targetId, condition);
-    } else {
-      FIREBASE_printOfflineMessage();
-    }
   }
   if (SCHEDULE_isTargetPlug(schedule)) {
     WS_turn(schedule.targetId + "/" + schedule.socketId, condition);
-    if (!WIFI_isOfflineMode()) {
-      FIREBASE_turnPlug(schedule.targetId, schedule.socketId, condition);
-    } else {
-      FIREBASE_printOfflineMessage();
-    }
   }
 }
 

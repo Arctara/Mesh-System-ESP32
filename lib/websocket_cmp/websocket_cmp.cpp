@@ -35,12 +35,12 @@ void WS_onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
                 AwsEventType type, void *arg, uint8_t *data, size_t len) {
   switch (type) {
     case WS_EVT_CONNECT:
-      SYSTEM_blinkLED(GREEN_LED);
+      SYSTEM_blinkLED(ORANGE_LED);
       Serial.printf("Websocket: Websocket client #%u connected from %s\n",
                     client->id(), client->remoteIP().toString().c_str());
       break;
     case WS_EVT_DISCONNECT:
-      SYSTEM_blinkLED(GREEN_LED);
+      SYSTEM_blinkLED(ORANGE_LED);
       Serial.printf("Websocket: Websocket client #%u disconnected\n",
                     client->id());
       break;
@@ -74,6 +74,23 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
 
     if (to == "center") {
       Serial.println("! Data for Center!");
+
+      for (int i = 1; i <= LAMP_COUNT; i++) {
+        if (from == "lamp-" + (String)i) {
+          Serial.println("  > Data from Lamp " + (String)i + "! (lmp)");
+
+          bool isActive = receivedDataWebsocket["state"].as<bool>();
+
+          if (!WIFI_isOfflineMode()) {
+            FIREBASE_turnLamp(from, isActive);
+          } else {
+            FIREBASE_printOfflineMessage();
+          }
+
+          Serial.println("    ==> " + isActive);
+        }
+      }
+
       for (int i = 1; i <= PLUG_COUNT; i++) {
         if (from == "plug-" + (String)i) {
           Serial.println("  > Data from Plug " + (String)i + "! (Plg" +
@@ -85,24 +102,10 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
           Serial.println("    ==> " + socket + " = " + condition);
 
           if (!WIFI_isOfflineMode()) {
-            Firebase.RTDB.setBool(
-                &fbdo,
-                plugLoc + "/" + from + "/sockets/" + socket + "/feedback",
-                condition);
+            FIREBASE_turnPlug(from, socket, condition);
           } else {
-            Serial.println("GLOBAL: Can't send data to Firebase.");
-            Serial.println("GLOBAL: Reason => Offline Mode.");
+            FIREBASE_printOfflineMessage();
           }
-        }
-      }
-
-      for (int i = 1; i <= LAMP_COUNT; i++) {
-        if (from == "lamp-" + (String)i) {
-          Serial.println("  > Data from Lamp " + (String)i + "! (lmp)");
-
-          String feedback = receivedDataWebsocket["feedback"].as<String>();
-
-          Serial.println("    ==> " + feedback);
         }
       }
 
