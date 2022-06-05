@@ -33,6 +33,11 @@ extern String currentLightReading;
 extern String currentMovementReading;
 extern String currentMoistureReading;
 
+extern unsigned long prevMovementMillis;
+extern unsigned long interval;
+extern unsigned long prevInterval;
+extern bool hasExtended;
+
 String getValue(String data, char separator, int index);
 
 #endif

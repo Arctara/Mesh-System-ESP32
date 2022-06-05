@@ -195,10 +195,36 @@ void loop() {
           if (!SCHEDULE_isActive(movementSchedule)) {
             movementSchedule.active = true;
             SCHEDULE_update(i, movementSchedule);
+            prevMovementMillis = millis();
             SCHEDULE_turnDevice(movementSchedule, true);
+            Serial.println("Movement Detected!");
+            Serial.println("Activating Movement Schedule...");
           }
-        } else {
-          if (SCHEDULE_isActive(movementSchedule)) {
+        }
+
+        if (movementSchedule.active == true) {
+          if (millis() - prevMovementMillis > (interval - 15000ul) &&
+              millis() - prevMovementMillis <= interval) {
+            if (currentMovementReading == "Ada Gerakan") {
+              if (!hasExtended) {
+                Serial.println("Movement still detected!");
+                Serial.println("Extending time...");
+                prevInterval = interval;
+                interval += 60000ul;
+                hasExtended = true;
+              }
+            }
+          }
+
+          if (millis() - prevMovementMillis > prevInterval &&
+              millis() - prevMovementMillis <= interval && hasExtended) {
+            Serial.println("Time has extended!");
+            hasExtended = false;
+          }
+
+          if (millis() - prevMovementMillis > interval) {
+            Serial.println("No movement detected so far");
+            Serial.println("Deactivating Movement Schedule...");
             movementSchedule.active = false;
             SCHEDULE_update(i, movementSchedule);
             SCHEDULE_turnDevice(movementSchedule, false);

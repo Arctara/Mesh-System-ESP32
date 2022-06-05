@@ -127,9 +127,9 @@ void WS_handleMessage(void *arg, uint8_t *data, size_t len) {
           } else if (sensorType == "movementSensor") {
             icon = "human";
 
-            currentMovementReading
+            currentMovementReading = data;
 
-                Serial.println("  > Data from Movement Sensor! (MvmSn)");
+            Serial.println("  > Data from Movement Sensor! (MvmSn)");
           } else if (sensorType == "moistureSensor") {
             if (data == "Terlalu banyak air") {
               icon = "wetter";
