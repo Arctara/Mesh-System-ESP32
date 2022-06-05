@@ -22,6 +22,7 @@ struct scheduleData {
   bool moreSubActive = false;
   String target;
   String targetId;
+  String socketId;
   String trigger;
   String timeMode;
   String startHour;

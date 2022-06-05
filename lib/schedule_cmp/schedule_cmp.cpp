@@ -18,6 +18,7 @@ void SCHEDULE_build(String source) {
       s.id = String(i);
       s.target = sD["target"].as<String>();
       s.targetId = sD["targetId"].as<String>();
+      s.socketId = sD["socketId"].as<String>();
       s.trigger = sD["trigger"].as<String>();
       if (s.trigger == "time") {
         s.timeMode = sD["timeMode"].as<String>();
@@ -146,9 +147,9 @@ void SCHEDULE_turnDevice(scheduleData schedule, bool condition) {
     }
   }
   if (SCHEDULE_isTargetPlug(schedule)) {
-    WS_turn(schedule.targetId + "/all", condition);
+    WS_turn(schedule.targetId + "/" + schedule.socketId, condition);
     if (!WIFI_isOfflineMode()) {
-      FIREBASE_turnPlug(schedule.targetId, condition);
+      FIREBASE_turnPlug(schedule.targetId, schedule.socketId, condition);
     } else {
       FIREBASE_printOfflineMessage();
     }
