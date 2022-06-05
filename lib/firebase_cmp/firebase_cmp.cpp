@@ -115,11 +115,8 @@ void FIREBASE_turnLamp(String lampId, bool condition) {
   }
 }
 
-void FIREBASE_turnPlug(String plugId, bool condition) {
-  for (int i = 1; i <= SOCKET_COUNT; i++) {
-    Firebase.RTDB.setBool(&fbdo,
-                          plugLoc + "/" + plugId + "/sockets/" + "socket-" +
-                              (String)i + "/condition",
-                          condition);
-  }
+void FIREBASE_turnPlug(String plugId, String socketId, bool condition) {
+  Firebase.RTDB.setBool(
+      &fbdo, plugLoc + "/" + plugId + "/sockets/" + socketId + "/condition",
+      condition);
 }
